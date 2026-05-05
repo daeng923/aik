@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Koordinasi - AIK dan MKWK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-btn.active { border-bottom: 2px solid #059669; color: #059669; background-color: #ecfdf5; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Header Section -->
+    <header class="bg-emerald-700 text-white py-10 px-6 shadow-md border-b-4 border-emerald-800">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-extrabold tracking-tight">AIK dan MKWK</h1>
+                <p class="text-emerald-100 mt-2 text-lg opacity-90 font-medium">Contoh Panduan Operasional Komprehensif (ToR Resmi)</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center">
+                <span class="block text-xs uppercase tracking-widest font-bold text-emerald-200">Prinsip Kerja</span>
+                <span class="text-sm italic font-medium">"Informatif, Memuaskan, Terstruktur, Efisien"</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="sticky top-0 bg-white border-b border-slate-200 z-50 shadow-sm overflow-x-auto">
+        <nav class="max-w-6xl mx-auto flex whitespace-nowrap px-4 no-scrollbar">
+            <button onclick="openTab('matriks')" id="btn-matriks" class="tab-btn active px-6 py-4 text-sm font-bold transition-all border-b-2 border-transparent uppercase tracking-wider">Matriks LMS</button>
+            <button onclick="openTab('admin')" id="btn-admin" class="tab-btn px-6 py-4 text-sm font-bold transition-all border-b-2 border-transparent uppercase tracking-wider">SIE Administrasi</button>
+            <button onclick="openTab('sekret')" id="btn-sekret" class="tab-btn px-6 py-4 text-sm font-bold transition-all border-b-2 border-transparent uppercase tracking-wider">SIE Sekretariat</button>
+            <button onclick="openTab('keu')" id="btn-keu" class="tab-btn px-6 py-4 text-sm font-bold transition-all border-b-2 border-transparent uppercase tracking-wider">SIE Keuangan</button>
+            <button onclick="openTab('pub')" id="btn-pub" class="tab-btn px-6 py-4 text-sm font-bold transition-all border-b-2 border-transparent uppercase tracking-wider">SIE Publikasi</button>
+            <button onclick="openTab('sar')" id="btn-sar" class="tab-btn px-6 py-4 text-sm font-bold transition-all border-b-2 border-transparent uppercase tracking-wider">SIE Sarpras</button>
+        </nav>
+    </div>
+
+    <main class="max-w-6xl mx-auto p-6 md:p-10 min-h-screen">
+
+        <!-- TAB: MATRIKS LMS -->
+        <section id="matriks" class="tab-content active animate-in fade-in">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900">Matriks Identifikasi Layanan (LMS)</h2>
+                <p class="text-slate-500 mt-1">Pemetaan rincian tugas berdasarkan peran operasional harian dan kepanitiaan besar.</p>
+            </div>
+
+            <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold tracking-widest border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4">SIE & PJ</th>
+                            <th class="px-6 py-4">Layanan Utama</th>
+                            <th class="px-6 py-4">Masalah Potensial</th>
+                            <th class="px-6 py-4">Mitigasi / Solusi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td class="px-6 py-4 font-bold text-emerald-700">ADMIN<br><span class="text-[10px] text-slate-400 font-normal italic">Staf Admin</span></td>
+                            <td class="px-6 py-4 font-medium">Penjadwalan AIK (1-4) & MKWK</td>
+                            <td class="px-6 py-4 text-slate-500 italic">Bentrok jadwal di Lt 2-4 antar prodi.</td>
+                            <td class="px-6 py-4 bg-emerald-50/50">Plotting ulang di portal & verifikasi ruang H-7.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-bold text-emerald-700">SEKRETARIAT<br><span class="text-[10px] text-slate-400 font-normal italic">Staf Sekret</span></td>
+                            <td class="px-6 py-4 font-medium">Legalitas SK Panitia & Dosen</td>
+                            <td class="px-6 py-4 text-slate-500 italic">SK terlambat terbit saat acara mulai.</td>
+                            <td class="px-6 py-4 bg-emerald-50/50">Draft SK kolektif diajukan H-14 acara.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-bold text-emerald-700">KEUANGAN<br><span class="text-[10px] text-slate-400 font-normal italic">Staf Keuangan</span></td>
+                            <td class="px-6 py-4 font-medium">Anggaran & Honorarium</td>
+                            <td class="px-6 py-4 text-slate-500 italic">Dana konsumsi/honor belum cair di hari-H.</td>
+                            <td class="px-6 py-4 bg-emerald-50/50">Penggunaan dana talangan/panjar H-1.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-bold text-emerald-700">PUBLIKASI<br><span class="text-[10px] text-slate-400 font-normal italic">Staf Publikasi</span></td>
+                            <td class="px-6 py-4 font-medium">Syiar & Dokumentasi LPJ</td>
+                            <td class="px-6 py-4 text-slate-500 italic">Foto momen inti kajian tidak lengkap.</td>
+                            <td class="px-6 py-4 bg-emerald-50/50">Pembagian jadwal shift & checklist momen inti.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-bold text-emerald-700">SARPRAS<br><span class="text-[10px] text-slate-400 font-normal italic">Staf Sarpras</span></td>
+                            <td class="px-6 py-4 font-medium">Sterilisasi & Sound System</td>
+                            <td class="px-6 py-4 text-slate-500 italic">Alat rusak mendadak saat kuliah/kajian.</td>
+                            <td class="px-6 py-4 bg-emerald-50/50">Sound check 60 mnt H-H & proyektor cadangan.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: SIE ADMINISTRASI -->
+        <section id="admin" class="tab-content animate-in fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">SOP Prioritas</span>
+                            <span class="text-slate-400 text-xs">SOP/AIK-MKWK/PAN-ADM/001</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2">Koordinasi Pendaftaran & Plotting SLQ</h3>
+                        <p class="text-slate-600 mb-6 font-bold uppercase text-xs">PJ: Indri M, M.Pd. / Shofroni Hidayat, M.Ag</p>
+                        
+                        <div class="space-y-4 text-sm leading-relaxed text-slate-700">
+                            <p><strong>1. Persiapan:</strong> Menyiapkan formulir pendaftaran dan database pendaftar SLQ melalui Front Office. Menarik data jadwal kuliah portal untuk AIK 1-4 dan MKWK.</p>
+                            <p><strong>2. Pelaksanaan:</strong> Melakukan verifikasi data mahasiswa. Melakukan plotting instruktur (panitia ad-hoc) berdasarkan level kemampuan. Memastikan jadwal pengajaran SLQ tidak bentrok dengan perkuliahan reguler (B.Indo, Pancasila, Kwn) di Lt 2-4.</p>
+                            <p><strong>3. Penyelesaian:</strong> Menyerahkan daftar final instruktur kepada Keuangan dan membagikan kartu kontrol kepada mahasiswa.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <h4 class="font-bold text-lg mb-4 text-slate-900 border-b pb-2">Timeline Kerja Rutin</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">HARIAN</span>
+                                Cek kelas Lt 2-4 berjalan, respon kendala akademik mahasiswa & dosen di kantor.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">MINGGUAN</span>
+                                Rekap presensi mahasiswa SLQ, monitoring kehadiran dosen MKWK (BI, Pan, Kwn).
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">BULANAN</span>
+                                Evaluasi nilai ujian AIK/MKWK, laporan kelulusan peserta SLQ semester berjalan.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-8 rounded-3xl space-y-6">
+                    <h4 class="text-lg font-bold border-b border-white/10 pb-4">Referensi SOP Lainnya</h4>
+                    <ul class="space-y-4 text-sm opacity-90">
+                        <li class="flex items-start gap-2"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 shrink-0"></div> SOP Pendaftaran Mahasiswa SLQ Baru</li>
+                        <li class="flex items-start gap-2"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 shrink-0"></div> SOP Validasi Sertifikat SLQ Syarat Skripsi</li>
+                        <li class="flex items-start gap-2"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 shrink-0"></div> SOP Penanganan Komplain Nilai MKWK</li>
+                        <li class="flex items-start gap-2"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 shrink-0"></div> SOP Prosedur Ujian Susulan AIK 1-4</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: SIE SEKRETARIAT -->
+        <section id="sekret" class="tab-content animate-in fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">SOP Prioritas</span>
+                            <span class="text-slate-400 text-xs">SOP/AIK-MKWK/PAN-SEK/001</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2">Manajemen SK Panitia Ujian (UTS/UAS)</h3>
+                        <p class="text-slate-600 mb-6 font-bold uppercase text-xs">PJ: Nazilatun K., S.Pd.I</p>
+                        
+                        <div class="space-y-4 text-sm leading-relaxed text-slate-700">
+                            <p><strong>1. Persiapan:</strong> Menerima daftar nama panitia ujian dan pengawas dari Sie Administrasi H-20 ujian.</p>
+                            <p><strong>2. Pelaksanaan:</strong> Membuat draft SK Panitia UTS/UAS sesuai format universitas. Mengurus tanda tangan pengesahan ke Kabag dan Biro terkait. Mendistribusikan salinan SK digital kepada staf terkait.</p>
+                            <p><strong>3. Penyelesaian:</strong> Menyimpan salinan SK ke dalam folder "Arsip Kepanitiaan" dan menata RPS (Rencana Pembelajaran) per mata kuliah.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <h4 class="font-bold text-lg mb-4 text-slate-900 border-b pb-2">Timeline Kerja Rutin</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">HARIAN</span>
+                                Proses surat masuk/keluar, notulensi Kajian Maghrib-Isya, distribusi dokumen kantor.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">MINGGUAN</span>
+                                Pembuatan undangan pemateri Kajian Sabtu, penataan arsip berkas SLQ.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">BULANAN</span>
+                                Pengamanan dokumentasi video/foto kegiatan bulanan, pengarsipan laporan ke pimpinan.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-8 rounded-3xl space-y-6">
+                    <h4 class="text-lg font-bold border-b border-white/10 pb-4">Referensi SOP Lainnya</h4>
+                    <ul class="space-y-4 text-sm opacity-90">
+                        <li>• SOP Distribusi Undangan Kajian Sabtu Subuh</li>
+                        <li>• SOP Standarisasi Format Notulensi Masjid</li>
+                        <li>• SOP Peminjaman Ruang Kantor untuk Rapat Dosen</li>
+                        <li>• SOP Dokumentasi Video Profil Kegiatan Masjid</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: SIE KEUANGAN -->
+        <section id="keu" class="tab-content animate-in fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">SOP Prioritas</span>
+                            <span class="text-slate-400 text-xs">SOP/AIK-MKWK/PAN-KEU/001</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2">Honorarium Pemateri & Logistik Ujian</h3>
+                        <p class="text-slate-600 mb-6 font-bold uppercase text-xs">PJ: Shovi Ummul Isnaini, M.Pd</p>
+                        
+                        <div class="space-y-4 text-sm leading-relaxed text-slate-700">
+                            <p><strong>1. Persiapan:</strong> Menghitung jumlah peserta ujian AIK 1-4 & MKWK. Menyusun RAB operasional konsumsi kajian/ujian.</p>
+                            <p><strong>2. Pelaksanaan:</strong> Melakukan pembelian logistik ujian (amplop, naskah, ATK). Pembayaran honorarium pemateri Kajian Sabtu sesaat setelah acara selesai (Layanan Prima). Pengadaan konsumsi panitia di Lt 2-4.</p>
+                            <p><strong>3. Penyelesaian:</strong> Menyusun laporan keuangan kepanitiaan maksimal H+7 setelah kegiatan berakhir.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <h4 class="font-bold text-lg mb-4 text-slate-900 border-b pb-2">Timeline Kerja Rutin</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">HARIAN</span>
+                                Pencatatan kas harian, penyediaan logistik harian kantor & kebutuhan operasional.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">MINGGUAN</span>
+                                Pembayaran honor Kajian Sabtu, kontrol penggunaan dana rutin mingguan.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">BULANAN</span>
+                                Audit dana SLQ, laporan keuangan bulanan kantor (Internal & Eksternal).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-8 rounded-3xl space-y-6">
+                    <h4 class="text-lg font-bold border-b border-white/10 pb-4">Referensi SOP Lainnya</h4>
+                    <ul class="space-y-4 text-sm opacity-90">
+                        <li>• SOP Pengajuan Dana Operasional Taktis Kajian</li>
+                        <li>• SOP Pembayaran Honor Instruktur SLQ</li>
+                        <li>• SOP Pengadaan Konsumsi Rapat Koordinasi</li>
+                        <li>• SOP Rekap Laporan Semesteran Audit</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: SIE PUBLIKASI -->
+        <section id="pub" class="tab-content animate-in fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">SOP Prioritas</span>
+                            <span class="text-slate-400 text-xs">SOP/AIK-MKWK/PAN-PUB/001</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2">Live Streaming & Reportase Kajian Masjid</h3>
+                        <p class="text-slate-600 mb-6 font-bold uppercase text-xs">PJ: Anny S., S.Pd.I / M. Taqiuddin Akram, S.Pd.</p>
+                        
+                        <div class="space-y-4 text-sm leading-relaxed text-slate-700">
+                            <p><strong>1. Persiapan:</strong> Menyiapkan alat dokumentasi, tripod, dan cek koneksi internet Masjid/Aula. Menerima materi flyer dari Sekretariat.</p>
+                            <p><strong>2. Pelaksanaan:</strong> Mulai Live YouTube 5 mnt sebelum kajian. Mengambil foto reportase suasana ujian di Lt 2-4. Update flyer Kajian Sabtu Subuh (H-2) dan Maghrib-Isya harian.</p>
+                            <p><strong>3. Penyelesaian:</strong> Sorting foto untuk lampiran LPJ Panitia. Update modul digital AIK 3/4 di website sumber belajar.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <h4 class="font-bold text-lg mb-4 text-slate-900 border-b pb-2">Timeline Kerja Rutin</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">HARIAN</span>
+                                Update info Kajian Maghrib-Isya, monitoring respon online mahasiswa.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">MINGGUAN</span>
+                                Produksi flyer Kajian Sabtu Subuh/Pagi, update konten edukatif AIK di sosmed.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">BULANAN</span>
+                                Evaluasi jangkauan publikasi media, update repository modul SLQ online.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-8 rounded-3xl space-y-6">
+                    <h4 class="text-lg font-bold border-b border-white/10 pb-4">Referensi SOP Lainnya</h4>
+                    <ul class="space-y-4 text-sm opacity-90">
+                        <li>• SOP Manajemen Akun Sosmed AIK-MKWK</li>
+                        <li>• SOP Produksi Flyer Kajian Sabtu Pagi</li>
+                        <li>• SOP Live Streaming YouTube/Zoom Kajian</li>
+                        <li>• SOP Update E-Modul AIK 4 di Website</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: SIE SARPRAS -->
+        <section id="sar" class="tab-content animate-in fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">SOP Prioritas</span>
+                            <span class="text-slate-400 text-xs">SOP/AIK-MKWK/PAN-SAR/001</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2">Sterilisasi Ruang Ujian & Set-up Sound</h3>
+                        <p class="text-slate-600 mb-6 font-bold uppercase text-xs">PJ: Suryo, S.Pd</p>
+                        
+                        <div class="space-y-4 text-sm leading-relaxed text-slate-700">
+                            <p><strong>1. Persiapan:</strong> Pengecekan baterai mic & sound masjid Lt 1-3. Verifikasi jumlah kursi/meja kelas Lt 2-4.</p>
+                            <p><strong>2. Pelaksanaan:</strong> Koordinasi dengan Supervisor CS untuk sterilisasi ruang H-1 ujian. Set-up audio aula Lt 1A/B dan Lt 2. Memastikan AC dan Proyektor Lt 2, 3, 4 dalam kondisi prima sebelum kajian Sabtu.</p>
+                            <p><strong>3. Penyelesaian:</strong> Mengunci ruangan setelah jam kuliah/kajian terakhir. Inventarisasi barang & laporan kerusakan proyektor.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <h4 class="font-bold text-lg mb-4 text-slate-900 border-b pb-2">Timeline Kerja Rutin</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">HARIAN</span>
+                                Cek kebersihan Masjid Lt 1-3 (Koordinasi CS), cek proyektor kelas Lt 2-4.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">MINGGUAN</span>
+                                Sound check Aula Kajian Sabtu Subuh, perawatan fasilitas inventaris rutin.
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-2xl">
+                                <span class="font-bold block mb-2 text-emerald-700">BULANAN</span>
+                                Inventarisasi barang, laporan fisik kerusakan AC/Proyektor ke Kaur/Kabag.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-8 rounded-3xl space-y-6">
+                    <h4 class="text-lg font-bold border-b border-white/10 pb-4">Referensi SOP Lainnya</h4>
+                    <ul class="space-y-4 text-sm opacity-90">
+                        <li>• SOP Peminjaman Aula untuk Unit Lain</li>
+                        <li>• SOP Checklist Kebersihan Wudhu (Kontrol CS)</li>
+                        <li>• SOP Penanganan Kerusakan Sound Saat Acara</li>
+                        <li>• SOP Checklist Pemeliharaan AC & Proyektor</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 py-12 px-6 text-center text-slate-500 border-t border-slate-800">
+        <p class="text-xs uppercase tracking-widest font-bold text-white mb-2">© 2026 AIK DAN MKWK JOOSS</p>
+        <p class="text-[10px] max-w-xl mx-auto">Dokumentasi Operasional Berdasarkan Nomenklatur & ToR Resmi. Pengelolaan Gedung Lantai 1-4, Masjid, Perkuliahan Reguler, SLQ, dan Kajian Rutin.</p>
+    </footer>
+
+    <script>
+        function openTab(tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+            
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            document.getElementById('btn-' + tabName).classList.add('active');
+            window.scrollTo({ top: 300, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
