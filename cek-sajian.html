@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Validasi Kurikulum Eksekutif</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        /* PENGATURAN KHUSUS CETAK (PRINT) */
+        @media print {
+            @page { 
+                size: landscape; 
+                margin: 0.8cm; /* Margin kertas diperkecil agar muat banyak */
+            }
+            body { 
+                background: white !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            /* Sembunyikan elemen interaktif & KPI Card saat dicetak */
+            .no-print { display: none !important; }
+            
+            .print-no-shadow { box-shadow: none !important; border-color: #e2e8f0 !important; }
+            .print-table-container { overflow: visible !important; }
+            
+            table { page-break-inside: auto; width: 100% !important; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            thead { display: table-header-group; }
+            
+            /* PENGHEMATAN KERTAS: Perkecil font & padding seluruh tabel saat print */
+            td, th { 
+                font-size: 9pt !important; 
+                padding: 4px 6px !important; 
+            }
+
+            /* KHUSUS KOLOM REKOMENDASI (Kolom ke-7): Font ekstra kecil & paksa 1 baris */
+            th:nth-child(7), td:nth-child(7) {
+                font-size: 7.5pt !important; 
+                white-space: nowrap !important; /* Paksa teks ke samping tidak turun baris */
+                width: 1% !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-12">
+
+    <div id="loadingScreen" class="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center transition-all duration-300 no-print">
+        <div class="bg-white/90 p-6 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center max-w-xs text-center mx-4">
+            <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h3 class="text-base font-bold text-slate-900">Sinkronisasi Basis Data</h3>
+            <p class="text-xs text-slate-500 mt-1">Sedang memproses rekapan kurikulum akademik...</p>
+        </div>
+    </div>
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs print-no-shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-lg shadow-xs print-no-shadow">M</div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-bold text-slate-900 leading-tight">Laporan Validasi Kurikulum</h1>
+                    <p class="text-[11px] sm:text-xs text-slate-400">Kroscek Kesesuaian KSA / Regular dengan Master Data</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span id="timestamp" class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium inline-block max-w-[180px] sm:max-w-none truncate">Memuat data...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 no-print">
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">📚</div>
+                <div class="min-w-0">
+                    <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Total Matkul</p>
+                    <p id="cardTotal" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">✅</div>
+                <div class="min-w-0">
+                    <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Aman Sesuai</p>
+                    <p id="cardAman" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">⚠️</div>
+                <div class="min-w-0">
+                    <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Belum Ditawarkan</p>
+                    <p id="cardBelum" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">❌</div>
+                <div class="min-w-0">
+                    <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Kondisikan</p>
+                    <p id="cardSalah" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3 no-print">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm">⚙️</span>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter & Pencarian Multi-Kriteria</h2>
+                </div>
+                <button onclick="window.print()" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer">
+                    <span>🖨️</span>
+                    <span>Cetak Data</span>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="relative lg:col-span-1">
+                    <input type="text" id="searchBar" placeholder="Cari Prodi / Matkul..." class="w-full pl-3 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs">
+                </div>
+                <div>
+                    <select id="filterStatus" class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua Status Analisis</option>
+                        <option value="AMAN">✅ AMAN</option>
+                        <option value="BELUM">⚠️ BELUM ADA</option>
+                        <option value="KONDISIKAN">❌ KONDISIKAN</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filterProdi" class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua Program Studi</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filterAngkatan" class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua Angkatan</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filterMatkulSpesifik" class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua Nama Mata Kuliah</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden print-no-shadow">
+            <div class="overflow-x-auto w-full print-table-container">
+                <table class="w-full text-left border-collapse min-w-[800px] sm:min-w-0 table-fixed sm:table-auto">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th class="px-4 py-3.5 w-1/4 sm:w-auto border-r border-slate-100">Program Studi</th>
+                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100">Angkatan</th>
+                            <th class="px-4 py-3.5 w-1/4 sm:w-auto border-r border-slate-100">Mata Kuliah</th>
+                            <th class="px-3 py-3.5 text-center w-16 border-r border-slate-100">Smt</th>
+                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100">Posisi Mhs</th>
+                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100">Status Riil</th>
+                            <th class="px-4 py-3.5 w-1/3 sm:w-auto">Rekomendasi Analisis</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-200 text-xs text-slate-700">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div id="emptyAlert" class="hidden p-12 text-center no-print">
+                <p class="text-2xl mb-2">🔍</p>
+                <p class="text-xs font-medium text-slate-500">Kombinasi filter tidak ditemukan. Sila sesuaikan kembali pencarian Anda.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // URL API Anda
+        const API_URL = "https://script.google.com/macros/s/AKfycbztQDFRO49vKOTQ3UncZG9zbCqM_f4sJF_t1b_cVZpX19SF7hHy5yxxKbIIjQds99ZP/exec"; 
+
+        let masterData = [];
+
+        async function ambilData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                masterData = data.sort((a, b) => {
+                    let prodiA = (a.program_studi || "").toString().toLowerCase().trim();
+                    let prodiB = (b.program_studi || "").toString().toLowerCase().trim();
+                    if (prodiA < prodiB) return -1;
+                    if (prodiA > prodiB) return 1;
+
+                    let angkatanA = (a.tahun_angkatan || "").toString().toLowerCase().trim();
+                    let angkatanB = (b.tahun_angkatan || "").toString().toLowerCase().trim();
+                    if (angkatanA > angkatanB) return -1; 
+                    if (angkatanA < angkatanB) return 1;
+
+                    let matkulA = (a.mata_kuliah || "").toString().toLowerCase().trim();
+                    let matkulB = (b.mata_kuliah || "").toString().toLowerCase().trim();
+                    if (matkulA < matkulB) return -1;
+                    if (matkulA > matkulB) return 1;
+
+                    return 0; 
+                });
+
+                inisialisasiDashboard();
+            } catch (error) {
+                console.error("Gagal sinkron data:", error);
+                alert("Koneksi API Gagal. Pastikan URL Web App sudah diset ke 'Anyone'.");
+            } finally {
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }
+        }
+
+        function inisialisasiDashboard() {
+            const skrg = new Date();
+            document.getElementById('timestamp').innerText = `Dicetak / Sync: ${skrg.toLocaleDateString('id-ID')} - ${skrg.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}`;
+
+            const prodiSet = new Set();
+            const angkatanSet = new Set();
+            const matkulSet = new Set();
+
+            masterData.forEach(item => {
+                if(item.program_studi) prodiSet.add(item.program_studi.trim());
+                if(item.tahun_angkatan) angkatanSet.add(item.tahun_angkatan.toString().trim());
+                if(item.mata_kuliah) matkulSet.add(item.mata_kuliah.trim());
+            });
+
+            populasiDropdown('filterProdi', Array.from(prodiSet).sort());
+            populasiDropdown('filterAngkatan', Array.from(angkatanSet).sort().reverse());
+            populasiDropdown('filterMatkulSpesifik', Array.from(matkulSet).sort());
+
+            hitungStatistik(masterData);
+            renderTabel(masterData);
+
+            const inputs = ['searchBar', 'filterStatus', 'filterProdi', 'filterAngkatan', 'filterMatkulSpesifik'];
+            inputs.forEach(id => document.getElementById(id).addEventListener('change', jalankanFilter));
+            document.getElementById('searchBar').addEventListener('input', jalankanFilter);
+        }
+
+        function populasiDropdown(elementId, arrayData) {
+            const el = document.getElementById(elementId);
+            arrayData.forEach(val => {
+                let opt = document.createElement('option');
+                opt.value = val;
+                opt.innerText = val;
+                el.appendChild(opt);
+            });
+        }
+
+        function hitungStatistik(data) {
+            document.getElementById('cardTotal').innerText = data.length;
+            document.getElementById('cardAman').innerText = data.filter(i => i.rekomendasi_analisis.includes('✅')).length;
+            document.getElementById('cardBelum').innerText = data.filter(i => i.rekomendasi_analisis.includes('⚠️')).length;
+            document.getElementById('cardSalah').innerText = data.filter(i => i.rekomendasi_analisis.includes('❌')).length;
+        }
+
+        function renderTabel(data) {
+            const tbody = document.getElementById('tableBody');
+            const alertEmpty = document.getElementById('emptyAlert');
+            tbody.innerHTML = "";
+
+            if (data.length === 0) {
+                alertEmpty.classList.remove('hidden');
+                return;
+            } else {
+                alertEmpty.classList.add('hidden');
+            }
+
+            data.forEach(item => {
+                let tr = document.createElement('tr');
+
+                let statusBadgeColor = item.status_penawaran.includes('TIDAK') 
+                    ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                let rowBgColor = "bg-white";
+                if (item.rekomendasi_analisis.includes('⚠️')) rowBgColor = "bg-amber-50/40 hover:bg-amber-100/60";
+                else if (item.rekomendasi_analisis.includes('❌')) rowBgColor = "bg-rose-50/40 hover:bg-rose-100/60";
+                else rowBgColor = "bg-white hover:bg-slate-50";
+
+                tr.className = `${rowBgColor} transition-colors border-b border-slate-200`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-slate-900 break-words border-r border-slate-100">${item.program_studi || '-'}</td>
+                    <td class="px-3 py-3 text-center text-slate-500 whitespace-nowrap border-r border-slate-100">${item.tahun_angkatan || '-'}</td>
+                    <td class="px-4 py-3 font-semibold text-slate-800 break-words border-r border-slate-100">${item.mata_kuliah || '-'}</td>
+                    <td class="px-3 py-3 text-center font-medium border-r border-slate-100">${item.sem__kur || '-'}</td>
+                    <td class="px-3 py-3 text-center border-r border-slate-100"><span class="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 rounded-md text-slate-600 whitespace-nowrap">${item.mhs_smt_berjalan || '-'}</span></td>
+                    <td class="px-3 py-3 text-center border-r border-slate-100">
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${statusBadgeColor} whitespace-nowrap">${item.status_penawaran}</span>
+                    </td>
+                    <td class="px-4 py-3 text-xs font-medium leading-relaxed">${item.rekomendasi_analisis}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function jalankanFilter() {
+            const pencarian = document.getElementById('searchBar').value.toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value;
+            const prodiFilter = document.getElementById('filterProdi').value;
+            const angkatanFilter = document.getElementById('filterAngkatan').value;
+            const matkulSpesifikFilter = document.getElementById('filterMatkulSpesifik').value;
+
+            const dataHasilFilter = masterData.filter(item => {
+                const matchKeyword = (item.mata_kuliah || '').toLowerCase().includes(pencarian) || 
+                                     (item.program_studi || '').toLowerCase().includes(pencarian);
+                
+                let matchStatus = true;
+                if (statusFilter === "AMAN") matchStatus = item.rekomendasi_analisis.includes('✅');
+                if (statusFilter === "BELUM") matchStatus = item.rekomendasi_analisis.includes('⚠️');
+                if (statusFilter === "KONDISIKAN") matchStatus = item.rekomendasi_analisis.includes('❌');
+
+                const matchProdi = prodiFilter === "" || item.program_studi === prodiFilter;
+                const matchAngkatan = angkatanFilter === "" || (item.tahun_angkatan && item.tahun_angkatan.toString().trim() === angkatanFilter);
+                const matchMatkulSpesifik = matkulSpesifikFilter === "" || (item.mata_kuliah && item.mata_kuliah.trim() === matkulSpesifikFilter);
+
+                return matchKeyword && matchStatus && matchProdi && matchAngkatan && matchMatkulSpesifik;
+            });
+
+            hitungStatistik(dataHasilFilter);
+            renderTabel(dataHasilFilter);
+        }
+
+        window.onload = ambilData;
+    </script>
+</body>
+</html>
