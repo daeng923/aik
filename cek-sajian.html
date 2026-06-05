@@ -16,37 +16,16 @@
         
         /* PENGATURAN KHUSUS CETAK (PRINT) */
         @media print {
-            @page { 
-                size: landscape; 
-                margin: 0.8cm; /* Margin kertas diperkecil agar muat banyak */
-            }
-            body { 
-                background: white !important; 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important; 
-            }
-            /* Sembunyikan elemen interaktif & KPI Card saat dicetak */
+            @page { size: landscape; margin: 0.8cm; }
+            body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
-            
             .print-no-shadow { box-shadow: none !important; border-color: #e2e8f0 !important; }
             .print-table-container { overflow: visible !important; }
-            
             table { page-break-inside: auto; width: 100% !important; }
             tr { page-break-inside: avoid; page-break-after: auto; }
             thead { display: table-header-group; }
-            
-            /* PENGHEMATAN KERTAS: Perkecil font & padding seluruh tabel saat print */
-            td, th { 
-                font-size: 9pt !important; 
-                padding: 4px 6px !important; 
-            }
-
-            /* KHUSUS KOLOM REKOMENDASI (Kolom ke-7): Font ekstra kecil & paksa 1 baris */
-            th:nth-child(7), td:nth-child(7) {
-                font-size: 7.5pt !important; 
-                white-space: nowrap !important; /* Paksa teks ke samping tidak turun baris */
-                width: 1% !important;
-            }
+            td, th { font-size: 9pt !important; padding: 4px 6px !important; }
+            th:nth-child(7), td:nth-child(7) { font-size: 7.5pt !important; white-space: nowrap !important; width: 1% !important; }
         }
     </style>
 </head>
@@ -78,28 +57,28 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 no-print">
-            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+            <div onclick="setFilterStatus('')" class="cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-md bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center space-x-3 sm:space-x-4">
                 <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">📚</div>
                 <div class="min-w-0">
-                    <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Total Matkul</p>
+                    <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Total (Reset)</p>
                     <p id="cardTotal" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
                 </div>
             </div>
-            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+            <div onclick="setFilterStatus('AMAN')" class="cursor-pointer hover:ring-2 hover:ring-emerald-400 hover:shadow-md bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center space-x-3 sm:space-x-4">
                 <div class="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">✅</div>
                 <div class="min-w-0">
                     <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Aman Sesuai</p>
                     <p id="cardAman" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
                 </div>
             </div>
-            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+            <div onclick="setFilterStatus('BELUM')" class="cursor-pointer hover:ring-2 hover:ring-amber-400 hover:shadow-md bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center space-x-3 sm:space-x-4">
                 <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">⚠️</div>
                 <div class="min-w-0">
                     <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Belum Ditawarkan</p>
                     <p id="cardBelum" class="text-lg sm:text-2xl font-bold text-slate-900">-</p>
                 </div>
             </div>
-            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs flex items-center space-x-3 sm:space-x-4">
+            <div onclick="setFilterStatus('KONDISIKAN')" class="cursor-pointer hover:ring-2 hover:ring-rose-400 hover:shadow-md bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center space-x-3 sm:space-x-4">
                 <div class="w-10 h-10 sm:w-12 sm:h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0">❌</div>
                 <div class="min-w-0">
                     <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">Kondisikan</p>
@@ -154,14 +133,49 @@
             <div class="overflow-x-auto w-full print-table-container">
                 <table class="w-full text-left border-collapse min-w-[800px] sm:min-w-0 table-fixed sm:table-auto">
                     <thead>
-                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <th class="px-4 py-3.5 w-1/4 sm:w-auto border-r border-slate-100">Program Studi</th>
-                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100">Angkatan</th>
-                            <th class="px-4 py-3.5 w-1/4 sm:w-auto border-r border-slate-100">Mata Kuliah</th>
-                            <th class="px-3 py-3.5 text-center w-16 border-r border-slate-100">Smt</th>
-                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100">Posisi Mhs</th>
-                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100">Status Riil</th>
-                            <th class="px-4 py-3.5 w-1/3 sm:w-auto">Rekomendasi Analisis</th>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
+                            <th class="px-4 py-3.5 w-1/4 sm:w-auto border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('program_studi')">
+                                <div class="flex items-center justify-between">
+                                    <span>Program Studi</span>
+                                    <span id="sort-icon-program_studi" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
+                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('tahun_angkatan')">
+                                <div class="flex items-center justify-between">
+                                    <span>Angkatan</span>
+                                    <span id="sort-icon-tahun_angkatan" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
+                            <th class="px-4 py-3.5 w-1/4 sm:w-auto border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('mata_kuliah')">
+                                <div class="flex items-center justify-between">
+                                    <span>Mata Kuliah</span>
+                                    <span id="sort-icon-mata_kuliah" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
+                            <th class="px-3 py-3.5 text-center w-16 border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('sem__kur')">
+                                <div class="flex items-center justify-between">
+                                    <span>Smt</span>
+                                    <span id="sort-icon-sem__kur" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
+                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('mhs_smt_berjalan')">
+                                <div class="flex items-center justify-between">
+                                    <span>Posisi Mhs</span>
+                                    <span id="sort-icon-mhs_smt_berjalan" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
+                            <th class="px-3 py-3.5 text-center w-24 border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('status_penawaran')">
+                                <div class="flex items-center justify-between">
+                                    <span>Status Riil</span>
+                                    <span id="sort-icon-status_penawaran" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
+                            <th class="px-4 py-3.5 w-1/3 sm:w-auto cursor-pointer hover:bg-slate-200 transition-colors group" onclick="sortTable('rekomendasi_analisis')">
+                                <div class="flex items-center justify-between">
+                                    <span>Rekomendasi Analisis</span>
+                                    <span id="sort-icon-rekomendasi_analisis" class="sort-icon text-[10px] text-slate-300 group-hover:text-slate-500">↕️</span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-slate-200 text-xs text-slate-700">
@@ -171,7 +185,7 @@
             
             <div id="emptyAlert" class="hidden p-12 text-center no-print">
                 <p class="text-2xl mb-2">🔍</p>
-                <p class="text-xs font-medium text-slate-500">Kombinasi filter tidak ditemukan. Sila sesuaikan kembali pencarian Anda.</p>
+                <p class="text-xs font-medium text-slate-500">Data tidak ditemukan. Coba sesuaikan filter kembali.</p>
             </div>
         </section>
     </main>
@@ -181,6 +195,7 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbztQDFRO49vKOTQ3UncZG9zbCqM_f4sJF_t1b_cVZpX19SF7hHy5yxxKbIIjQds99ZP/exec"; 
 
         let masterData = [];
+        let currentSort = { column: '', direction: 'asc' }; // Menyimpan status urutan saat ini
 
         async function ambilData() {
             try {
@@ -192,6 +207,7 @@
                     return;
                 }
 
+                // Default urutan awal saat pertama kali dimuat
                 masterData = data.sort((a, b) => {
                     let prodiA = (a.program_studi || "").toString().toLowerCase().trim();
                     let prodiB = (b.program_studi || "").toString().toLowerCase().trim();
@@ -263,6 +279,39 @@
             document.getElementById('cardSalah').innerText = data.filter(i => i.rekomendasi_analisis.includes('❌')).length;
         }
 
+        // FUNGSI BARU: Untuk klik langsung dari Kotak KPI ke Filter Status
+        function setFilterStatus(status) {
+            document.getElementById('filterStatus').value = status;
+            jalankanFilter(); // Otomatis trigger filter
+        }
+
+        // FUNGSI BARU: Untuk klik header tabel (Sorting A-Z / Z-A)
+        function sortTable(column) {
+            // Tentukan arah urutan baru
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc'; // Default arah saat kolom baru diklik
+            }
+
+            // Kembalikan semua panah ke default ↕️
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.innerText = '↕️';
+                icon.classList.replace('text-indigo-600', 'text-slate-300'); // Reset warna
+            });
+            
+            // Ubah panah di kolom aktif
+            const activeIcon = document.getElementById('sort-icon-' + column);
+            if (activeIcon) {
+                activeIcon.innerText = currentSort.direction === 'asc' ? '🔼' : '🔽';
+                activeIcon.classList.replace('text-slate-300', 'text-indigo-600'); // Highlight warna
+            }
+
+            // Render ulang tabel dengan filter dan urutan terbaru
+            jalankanFilter(); 
+        }
+
         function renderTabel(data) {
             const tbody = document.getElementById('tableBody');
             const alertEmpty = document.getElementById('emptyAlert');
@@ -311,7 +360,8 @@
             const angkatanFilter = document.getElementById('filterAngkatan').value;
             const matkulSpesifikFilter = document.getElementById('filterMatkulSpesifik').value;
 
-            const dataHasilFilter = masterData.filter(item => {
+            // 1. Eksekusi Proses Filter Data
+            let dataHasilFilter = masterData.filter(item => {
                 const matchKeyword = (item.mata_kuliah || '').toLowerCase().includes(pencarian) || 
                                      (item.program_studi || '').toLowerCase().includes(pencarian);
                 
@@ -327,6 +377,25 @@
                 return matchKeyword && matchStatus && matchProdi && matchAngkatan && matchMatkulSpesifik;
             });
 
+            // 2. Eksekusi Proses Sorting Data (Berdasarkan Panah yang Diklik)
+            if (currentSort.column !== '') {
+                dataHasilFilter.sort((a, b) => {
+                    let valA = (a[currentSort.column] || "").toString().toLowerCase().trim();
+                    let valB = (b[currentSort.column] || "").toString().toLowerCase().trim();
+                    
+                    // Supaya angka diurutkan secara matematis (bukan teks '10' dianggap lebih kecil dari '2')
+                    if (!isNaN(valA) && !isNaN(valB)) {
+                        valA = parseFloat(valA);
+                        valB = parseFloat(valB);
+                    }
+
+                    if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            // 3. Render Statistik & Tabel
             hitungStatistik(dataHasilFilter);
             renderTabel(dataHasilFilter);
         }
