@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body { font-family: 'Times New Roman', Times, serif; padding: 5px; color: #333; line-height: 1.1; font-size: 9.5pt; }
+    
+    /* UI Elements */
+    .controls { margin-bottom: 20px; background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    button { cursor: pointer; padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    select { padding: 7px; border-radius: 4px; border: 1px solid #ccc; min-width: 250px; }
+    .loading { color: #666; font-style: italic; margin-left: 10px; }
+    .error { color: #d32f2f; margin-top: 10px; padding: 10px; background: #ffebee; border-radius: 4px; }
+
+    /* Tab Styling */
+    .tab-content { padding: 0; }
+    
+    /* Laporan Table */
+    .laporan-container { margin-top: 20px; }
+    .laporan-table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; border: 1.5px solid #000; }
+    .laporan-table th, .laporan-table td { border: 1px solid #000; padding: 3px 2px; font-size: 8.5pt; text-align: center; height: 18px; }
+    .laporan-table th { background: #f2f2f2 !important; font-weight: bold; }
+    .laporan-table .col-no { width: 30px; }
+    .laporan-table .col-nim { width: 85px; }
+    .laporan-table .col-nama { width: 180px; text-align: left; padding-left: 4px; }
+    .laporan-table .col-pertemuan { width: 22px; font-size: 7.5pt; }
+    .laporan-table .col-total { width: 30px; font-weight: bold; }
+    
+    .mark-hadir { color: #28a745; font-weight: bold; }
+    .mark-absen { color: #d32f2f; font-weight: bold; }
+    
+    @media print {
+      .laporan-container { page-break-inside: avoid; }
+      .laporan-table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
+    }
+
+    /* Spinner Animation */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2196F3;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    /* Presence Layout */
+    .print-container { width: 100%; height: auto; }
+    
+    /* Header Wrapper for Balance */
+    .header-wrapper { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+      margin-bottom: 3px;
+    }
+    
+    .header-title { 
+      flex: 1; 
+      text-align: center; 
+      padding-left: 85px; 
+    } 
+    .header-title h2 { margin: 0; font-size: 12pt; text-transform: uppercase; color: #000; }
+    
+    .meta-info { margin-top: 3px; font-size: 9.5pt; } 
+    .meta-info p { margin: 1px 0; }
+
+    /* QR Box Position Adjusted */
+    .qr-box { 
+      width: 80px; 
+      text-align: center; 
+      border: 1px solid #000; 
+      padding: 2px; 
+      background: #fff; 
+      flex-shrink: 0;
+    }
+    .qr-box img { width: 70px; height: 70px; display: block; margin: 0 auto; }
+    .qr-box span { display: block; font-size: 6pt; font-weight: bold; margin-top: 1px; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 5px; table-layout: fixed; border: 1.5px solid #000; clear: both; }
+    th, td { border: 1px solid #000; padding: 1px 1px; font-size: 8.5pt; text-align: center; overflow: hidden; height: 17px; } 
+    th { background: #f2f2f2 !important; font-weight: bold; height: 22px; }
+    
+    /* Column Widths */
+    .col-no { width: 30px; }
+    .col-nim { width: 85px; }
+    .col-nama { width: 200px; text-align: left; padding-left: 4px; }
+    .col-presensi { width: 22px; }
+
+    .footer { 
+      margin-top: 5px; 
+      font-size: 7.5pt; 
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #000;
+      padding-top: 2px;
+    }
+
+    @media print {
+      @page { 
+        size: 330mm 215mm; /* Ukuran Folio / F4 Landscape */
+        margin: 1.5cm 0.7cm 0.5cm 0.7cm; 
+      }
+      body { padding: 0; margin: 0; }
+      .controls { display: none; }
+      .print-container { page-break-after: always; }
+      th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="controls">
+  <!-- Tab Navigation -->
+  <div style="display:flex; gap:10px; margin-bottom:15px; border-bottom:2px solid #ddd; padding-bottom:10px;">
+    <button onclick="switchTab('tab-presensi')" id="tabBtn-presensi" style="background:#007bff; padding:8px 15px; font-weight:bold;">📋 Presensi</button>
+    <button onclick="switchTab('tab-laporan')" id="tabBtn-laporan" style="background:#f0f0f0; color:#333; padding:8px 15px;">📊 Laporan</button>
+  </div>
+
+  <!-- Tab 1: Presensi -->
+  <div id="tab-presensi" class="tab-content" style="display:block;">
+    <strong>Pilih Kelompok (Kolom F):</strong>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+      <button onclick="prevKelompok()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">← Prev</button>
+      <select id="kelompok" disabled style="flex:1; max-width:300px;">
+        <option value="">Memuat data...</option>
+      </select>
+      <button onclick="nextKelompok()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">Next →</button>
+      <span class="loading" id="loadingStatus"></span>
+    </div>
+    <br><br>
+    <button onclick="render()" id="btnRender" disabled>Tampilkan</button>
+    <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrint" disabled>Cetak Presensi</button>
+    <button onclick="openImportDialog()" style="background: #ff9800; margin-left: 10px;">📥 Import Data</button>
+  </div>
+
+  <!-- Tab 2: Laporan -->
+  <div id="tab-laporan" class="tab-content" style="display:none;">
+    <strong>Filter Laporan:</strong>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+      <button onclick="prevKelompokLaporan()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">← Prev</button>
+      <select id="kelompokLaporan" disabled style="flex:1; max-width:300px;">
+        <option value="">Memuat data...</option>
+      </select>
+      <button onclick="nextKelompokLaporan()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">Next →</button>
+    </div>
+    <br><br>
+    <button onclick="openTanggalPertemuanModal()" style="background:#6c59c6; margin-right:10px;">📅 Set Tanggal Pertemuan</button>
+    <button onclick="renderLaporan()" id="btnRenderLaporan" disabled style="background:#17a2b8;">Tampilkan Laporan</button>
+    <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrintLaporan" disabled>Cetak Laporan</button>
+  </div>
+</div>
+
+<!-- Modal Import -->
+<div id="importModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:white; padding:20px; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto;">
+    <h2 style="margin-top:0;">Import Data Peserta</h2>
+    
+    <div style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px;">
+      <strong>📥 Download Template Dulu:</strong>
+      <button onclick="downloadTemplate()" style="background:#2196F3; margin-left:10px; padding:6px 12px;">Unduh template_import.csv</button>
+      <p style="font-size:9pt; color:#666; margin:5px 0 0 0;">Buka dengan Excel, isi data, kemudian import ke sini</p>
+    </div>
+    
+    <div style="margin-bottom:15px;">
+      <p style="font-size:11pt; color:#666; margin:0 0 10px 0;">
+        <strong>Pilih salah satu:</strong>
+      </p>
+      
+      <div style="margin-bottom:15px;">
+        <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:10px;">
+          <input type="radio" name="importType" value="csv" checked style="margin-right:10px;">
+          <strong>Upload File CSV</strong>
+        </label>
+        <input type="file" id="csvFile" accept=".csv" style="margin-left:30px; display:block;">
+      </div>
+      
+      <div style="margin-bottom:15px;">
+        <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:10px;">
+          <input type="radio" name="importType" value="paste" style="margin-right:10px;">
+          <strong>Paste Data (Excel/Spreadsheet)</strong>
+        </label>
+        <textarea id="pasteData" placeholder="Paste data dari Excel atau Google Sheets&#10;Harus include header row" style="margin-left:30px; width:100%; height:150px; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:monospace; font-size:9pt;"></textarea>
+      </div>
+    </div>
+    
+    <div id="importError" style="display:none; color:#d32f2f; background:#ffebee; padding:10px; border-radius:4px; margin-bottom:10px;"></div>
+    
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button onclick="closeImportDialog()" style="background:#999;">Batal</button>
+      <button onclick="importDataAction()" style="background:#ff9800;">Import</button>
+    </div>
+  </div>
+</div>
+
+<div id="errorMsg"></div>
+<div id="output"></div>
+
+<!-- Success Modal -->
+<div id="successModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2001; align-items:center; justify-content:center;">
+  <div style="background:white; padding:30px; border-radius:8px; text-align:center; min-width:350px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <div style="font-size:50px; margin-bottom:15px;">✓</div>
+    <h2 id="successTitle" style="margin:0 0 10px 0; color:#28a745;">Berhasil!</h2>
+    <p id="successMessage" style="color:#666; font-size:11pt; margin:10px 0 20px 0; line-height:1.5;"></p>
+    <button onclick="closeSuccessModal()" style="background:#28a745; padding:10px 20px; font-size:11pt;">Tutup</button>
+  </div>
+</div>
+
+<!-- Modal Tanggal Pertemuan -->
+<div id="tanggalPertemuanModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; overflow-y:auto;">
+  <div style="background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; margin:20px auto;">
+    <h2 style="margin-top:0;">Set Tanggal Pertemuan</h2>
+    
+    <div style="margin-bottom:15px;">
+      <label style="display:block; font-weight:bold; margin-bottom:5px;">Tanggal Mulai:</label>
+      <input type="date" id="tanggalMulai" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+    </div>
+    
+    <div style="margin-bottom:15px;">
+      <label style="display:block; font-weight:bold; margin-bottom:5px;">Tanggal Berakhir:</label>
+      <input type="date" id="tanggalBerakhir" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+    </div>
+    
+    <div style="margin-bottom:15px;">
+      <label style="display:block; font-weight:bold; margin-bottom:5px;">Terapkan Ke:</label>
+      <div style="display:flex; gap:15px;">
+        <label style="display:flex; align-items:center; cursor:pointer;">
+          <input type="radio" name="applyTo" value="single" checked style="margin-right:8px;">
+          <span>Kelompok Saat Ini Saja</span>
+        </label>
+        <label style="display:flex; align-items:center; cursor:pointer;">
+          <input type="radio" name="applyTo" value="all" style="margin-right:8px;">
+          <span>Semua Kelompok</span>
+        </label>
+      </div>
+    </div>
+    
+    <div style="background:#f0f0f0; padding:10px; border-radius:4px; margin-bottom:15px;">
+      <p style="margin:0 0 5px 0; font-size:10pt;"><strong>Hari Kerja yang Dihitung:</strong> Senin - Jumat</p>
+      <p style="margin:0; font-size:10pt; color:#666;">Sabtu, Minggu, dan hari libur tidak termasuk</p>
+    </div>
+    
+    <div id="hariKerjaInfo" style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px; display:none;">
+      <p id="hariKerjaText" style="margin:0; font-size:11pt; color:#1565c0;"></p>
+    </div>
+    
+    <div id="tanggalError" style="display:none; color:#d32f2f; background:#ffebee; padding:10px; border-radius:4px; margin-bottom:10px;"></div>
+    
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button onclick="closeTanggalPertemuanModal()" style="background:#999;">Batal</button>
+      <button onclick="generatePertemuanDates()" style="background:#6c59c6;">Generate Jadwal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center;">
+  <div style="background:white; padding:30px; border-radius:8px; text-align:center; min-width:300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h3 style="margin-top:0; color:#333;">Memproses Data...</h3>
+    
+    <div class="spinner"></div>
+    
+    <div style="margin:20px 0;">
+      <div style="background:#e0e0e0; height:8px; border-radius:4px; overflow:hidden;">
+        <div id="progressBar" style="background:linear-gradient(90deg, #2196F3, #00BCD4); height:100%; width:0%; transition:width 0.3s ease;"></div>
+      </div>
+    </div>
+    
+    <p id="progressText" style="color:#666; font-size:11pt; margin:10px 0; font-weight:bold;">0%</p>
+    <p style="color:#999; font-size:9pt; margin:0;">Upload data besar membutuhkan waktu, tunggu sebentar...</p>
+  </div>
+</div>
+
+<script>
+var dataKelompok = {};
+var kelompokList = []; // Store sorted list of kelompok
+var currentKelompokIndex = 0;
+var currentLaporanIndex = 0; // Index untuk laporan tab
+var laporanData = {}; // Store data dummy presensi
+var pertemuanDates = {}; // Store tanggal pertemuan per kelompok
+var GAS_DEPLOYMENT_ID = ""; // akan diisi dari GAS
+
+// Fungsi hitung hari kerja (Senin-Jumat)
+function hitungHariKerja(startDate, endDate) {
+  let hariKerja = 0;
+  let currentDate = new Date(startDate);
+  const end = new Date(endDate);
+  
+  while (currentDate <= end) {
+    const dayOfWeek = currentDate.getDay();
+    // 1 = Senin, 2 = Selasa, ..., 5 = Jumat, 6 = Sabtu, 0 = Minggu
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      hariKerja++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return hariKerja;
+}
+
+// Fungsi format tanggal
+function formatTanggal(date) {
+  const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+  return date.toLocaleDateString('id-ID', options);
+}
+
+// Ambil data dari GAS doGet()
+function loadData() {
+  var status = document.getElementById("loadingStatus");
+  status.textContent = "Mengambil data dari server...";
+  
+  fetch(getGasUrl())
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      processData(data.data);
+      populateDropdown();
+      status.textContent = "✓ Data berhasil dimuat";
+      document.getElementById("kelompok").disabled = false;
+      document.getElementById("btnRender").disabled = false;
+      document.getElementById("btnPrint").disabled = false;
+    })
+    .catch(err => {
+      console.error(err);
+      showError("Gagal mengambil data: " + err.message);
+      status.textContent = "✗ Gagal memuat";
+    });
+}
+
+// Fungsi untuk mendapatkan GAS URL
+function getGasUrl() {
+  return "https://script.google.com/macros/s/AKfycbwvdQymsajbzWT3j3s_gHx8jyPsaYHK8NXxyNShCTd0adB5TL9fYGCHRUP7V0zTpeLk/exec?v=" + Date.now();
+}
+
+function processData(rows) {
+  dataKelompok = {};
+  
+  // rows[0] adalah header, lewati
+  if (rows.length > 1) {
+    rows.slice(1).forEach(function(r) {
+      var kelompok = r[5] || ""; // Kolom F: KELOMPOK
+      if (!kelompok) return;
+      
+      var nim = r[1] || ""; // Kolom B: NIM
+      var nama = r[2] || ""; // Kolom C: NAMA
+      var instruktur = r[7] || "-"; // Kolom H: INSTRUKTUR
+      var link = r[8] || "#"; // Kolom I: LINK WHATSAPP GROUP
+      
+      if (!dataKelompok[kelompok]) {
+        dataKelompok[kelompok] = {
+          instruktur: instruktur,
+          link: link,
+          data: []
+        };
+      }
+      
+      dataKelompok[kelompok].data.push({
+        nim: nim,
+        nama: nama
+      });
+    });
+  }
+  
+  // Sortir Mahasiswa berdasarkan NIM di setiap kelompok
+  for (var k in dataKelompok) {
+    dataKelompok[k].data.sort(function(a, b) {
+      return a.nim.toString().localeCompare(b.nim.toString(), undefined, {numeric: true, sensitivity: 'base'});
+    });
+  }
+}
+
+function populateDropdown() {
+  var select = document.getElementById("kelompok");
+  select.innerHTML = "";
+  
+  kelompokList = Object.keys(dataKelompok).sort();
+  kelompokList.forEach(function(k) {
+    var opt = document.createElement("option");
+    opt.value = k;
+    opt.innerHTML = k;
+    select.appendChild(opt);
+  });
+  
+  currentKelompokIndex = 0;
+  if (kelompokList.length > 0) {
+    select.value = kelompokList[0];
+  }
+  
+  // Populate laporan dropdown juga
+  populateLaporanDropdown();
+  
+  if (kelompokList.length === 0) {
+    showError("Tidak ada data kelompok ditemukan di spreadsheet");
+  }
+}
+
+// Populate Laporan Dropdown (sama seperti presensi)
+function populateLaporanDropdown() {
+  const select = document.getElementById("kelompokLaporan");
+  select.innerHTML = "";
+  
+  kelompokList.forEach(function(k) {
+    const opt = document.createElement("option");
+    opt.value = k;
+    opt.innerHTML = k;
+    select.appendChild(opt);
+  });
+  
+  currentLaporanIndex = 0;
+  if (kelompokList.length > 0) {
+    select.value = kelompokList[0];
+    document.getElementById("btnRenderLaporan").disabled = false;
+    document.getElementById("btnPrintLaporan").disabled = false;
+  }
+}
+
+function showError(msg) {
+  var errorDiv = document.getElementById("errorMsg");
+  errorDiv.innerHTML = "<div class='error'>" + msg + "</div>";
+}
+
+function render() {
+  var k = document.getElementById("kelompok").value;
+  if (!k || !dataKelompok[k]) return;
+  
+  var obj = dataKelompok[k];
+  var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(obj.link);
+
+  var html = "<div class='print-container'>";
+  
+  // Header Wrapper (Judul + QR)
+  html += "<div class='header-wrapper'>";
+  html += "  <div class='header-title'>";
+  html += "    <h2>Presensi Kelompok Pembelajaran Al-Qur'an</h2>";
+  html += "    <h2>Mahasiswa Angkatan 2025</h2>";
+  html += "    <div class='meta-info' style='text-align: left;'>";
+  html += "      <p><strong>Kelompok:</strong> " + k + "</p>";
+  html += "      <p><strong>Instruktur:</strong> " + obj.instruktur + "</p>";
+  html += "    </div>";
+  html += "  </div>";
+  html += "  <div class='qr-box'><img src='" + qrUrl + "'><span>SCAN GRUP WA</span></div>";
+  html += "</div>";
+
+  // Table
+  html += "<table>";
+  html += "<thead>";
+  // Baris pertama: Nomor pertemuan
+  html += "<tr>";
+  html += "<th class='col-no' rowspan='2'>No</th>";
+  html += "<th class='col-nim' rowspan='2'>NIM</th>";
+  html += "<th class='col-nama' rowspan='2'>Nama Mahasiswa</th>";
+  
+  for (var i = 1; i <= 14; i++) {
+    html += "<th class='col-presensi' style='border-bottom: none;'>" + i + "</th>";
+  }
+  html += "</tr>";
+  
+  // Baris kedua: Tanggal
+  html += "<tr>";
+  for (var i = 1; i <= 14; i++) {
+    html += "<th class='col-presensi' style='font-size: 7pt; background: #f0f0f0; border-top: none; text-align: left; padding-left: 2px;'>Tgl:</th>";
+  }
+  html += "</tr>";
+  html += "</thead><tbody>";
+
+  var displayData = obj.data;
+
+  displayData.forEach(function(m, index) {
+    html += "<tr>";
+    html += "<td>" + (index + 1) + "</td>";
+    html += "<td>" + m.nim + "</td>";
+    html += "<td class='col-nama'>" + m.nama + "</td>";
+    for (var j = 1; j <= 14; j++) {
+      html += "<td></td>";
+    }
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+
+  // Footer
+  html += "<div class='footer'>";
+  html += "<span>Dicetak: " + new Date().toLocaleDateString('id-ID') + "</span>";
+  html += "<span><strong>Unit Pelaksana: BPP-MKWK UMM</strong></span>";
+  html += "</div>";
+
+  html += "</div>";
+
+  document.getElementById("output").innerHTML = html;
+}
+
+// Import Dialog Functions
+function openImportDialog() {
+  document.getElementById("importModal").style.display = "flex";
+  document.getElementById("importError").style.display = "none";
+  document.getElementById("importError").textContent = "";
+}
+
+function closeImportDialog() {
+  document.getElementById("importModal").style.display = "none";
+  document.getElementById("csvFile").value = "";
+  document.getElementById("pasteData").value = "";
+}
+
+function downloadTemplate() {
+  // Data template
+  const templateData = [
+    ["NO", "NIM", "NAMA", "PROGRAM STUDI", "KELAS", "KELOMPOK", "KODE INSTRUKTUR", "INSTRUKTUR", "LINK WHATSAPP GROUP", "GROUP WHATSAPP", "KOORDINATOR"],
+    ["1", "202510050110001", "YOGI ARDIANTAMA", "Ilmu Pemerintahan", "A", "Ilmu Pemerintahan - 01", "sholihah24", "Sholihah Nashir, S.Pd.I.", "https://chat.whatsapp.com/Iv9Dk37iyIWKC38o15m3Vd?mode=gi_t", "Klik to Join", ""],
+    ["2", "202510050110002", "AHMAD RAZZAQ", "Ilmu Pemerintahan", "A", "Ilmu Pemerintahan - 01", "sholihah24", "Sholihah Nashir, S.Pd.I.", "https://chat.whatsapp.com/Iv9Dk37iyIWKC38o15m3Vd?mode=gi_t", "Klik to Join", ""],
+    ["3", "202510050110003", "SITI NURHALIZA", "Ilmu Pemerintahan", "B", "Ilmu Pemerintahan - 02", "amin_dev", "Amin Ridho, S.Pd.", "https://chat.whatsapp.com/L8aD9qWx2pL4jK5m9zR3pO?mode=gi_t", "Klik to Join", ""],
+    ["4", "202510050110004", "BUDI SANTOSO", "Ilmu Pemerintahan", "B", "Ilmu Pemerintahan - 02", "amin_dev", "Amin Ridho, S.Pd.", "https://chat.whatsapp.com/L8aD9qWx2pL4jK5m9zR3pO?mode=gi_t", "Klik to Join", ""],
+    ["5", "202510050110005", "DEWI LESTARI", "Biologi", "A", "Biologi - 01", "fajar_bio", "Dr. Fajar Sidiq", "https://chat.whatsapp.com/K7bV4sT8xM2nP5qR1wY3zC?mode=gi_t", "Klik to Join", ""]
+  ];
+  
+  // Convert ke CSV
+  let csvContent = "data:text/csv;charset=utf-8,";
+  templateData.forEach(row => {
+    csvContent += row.map(cell => {
+      // Escape quotes dan wrap dengan quotes jika ada comma/quote
+      const escaped = String(cell).replace(/"/g, '""');
+      return '"' + escaped + '"';
+    }).join(",") + "\n";
+  });
+  
+  // Download
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csvContent));
+  link.setAttribute("download", "template_import.csv");
+  link.click();
+}
+
+function importDataAction() {
+  const importType = document.querySelector('input[name="importType"]:checked').value;
+  let csvText = "";
+  
+  if (importType === "csv") {
+    const file = document.getElementById("csvFile").files[0];
+    if (!file) {
+      showImportError("Pilih file CSV terlebih dahulu");
+      return;
+    }
+    
+    showLoading(true);
+    updateProgress(5);
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      updateProgress(20);
+      csvText = e.target.result;
+      processImport(csvText);
+    };
+    reader.onerror = function() {
+      showLoading(false);
+      showImportError("Gagal membaca file");
+    };
+    reader.readAsText(file);
+  } else {
+    csvText = document.getElementById("pasteData").value;
+    if (!csvText.trim()) {
+      showImportError("Paste data terlebih dahulu");
+      return;
+    }
+    showLoading(true);
+    updateProgress(5);
+    setTimeout(() => processImport(csvText), 100);
+  }
+}
+
+function processImport(csvText) {
+  try {
+    // Parse CSV
+    updateProgress(10);
+    const rows = parseCSV(csvText);
+    updateProgress(30);
+    
+    if (rows.length < 1) {
+      throw new Error("File kosong atau format tidak valid");
+    }
+    
+    // Validasi header
+    updateProgress(40);
+    const header = rows[0];
+    if (header.length < 11) {
+      throw new Error("Format tidak valid. Harus ada 11 kolom:\n1. NO\n2. NIM\n3. NAMA\n4. PROGRAM STUDI\n5. KELAS\n6. KELOMPOK\n7. KODE INSTRUKTUR\n8. INSTRUKTUR\n9. LINK WHATSAPP GROUP\n10. GROUP WHATSAPP\n11. KOORDINATOR");
+    }
+    
+    // Validasi data tidak terlalu besar
+    updateProgress(50);
+    if (rows.length > 1001) {
+      throw new Error("Data terlalu besar (max 1000 baris). Saat ini: " + (rows.length - 1) + " baris");
+    }
+    
+    updateProgress(60);
+    // Kirim ke GAS
+    sendImportToGAS(rows);
+  } catch (error) {
+    showLoading(false);
+    showImportError(error.message);
+  }
+}
+
+function parseCSV(csvText) {
+  const rows = [];
+  let currentRow = [];
+  let currentCell = "";
+  let insideQuotes = false;
+  
+  for (let i = 0; i < csvText.length; i++) {
+    const char = csvText[i];
+    const nextChar = csvText[i + 1];
+    
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        currentCell += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === '\t' && !insideQuotes) {
+      currentRow.push(currentCell.trim());
+      currentCell = "";
+    } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+      if (currentCell || currentRow.length > 0) {
+        currentRow.push(currentCell.trim());
+        if (currentRow.some(c => c !== "")) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentCell = "";
+      }
+      if (char === '\r' && nextChar === '\n') i++;
+    } else {
+      currentCell += char;
+    }
+  }
+  
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some(c => c !== "")) {
+      rows.push(currentRow);
+    }
+  }
+  
+  return rows;
+}
+
+function sendImportToGAS(rows) {
+  showLoading(true);
+  updateProgress(70);
+  
+  const gasUrl = "https://script.google.com/macros/s/AKfycbwvdQymsajbzWT3j3s_gHx8jyPsaYHK8NXxyNShCTd0adB5TL9fYGCHRUP7V0zTpeLk/exec";
+  const totalRows = rows.length - 1; // exclude header
+  
+  // Simulasi smooth progress increment saat waiting (tidak akurat, hanya visual)
+  const progressInterval = setInterval(() => {
+    const currentProgress = parseInt(document.getElementById("progressBar").style.width);
+    if (currentProgress < 90) {
+      updateProgress(currentProgress + 2);
+    }
+  }, 200);
+  
+  fetch(gasUrl, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "import",
+      rows: rows
+    })
+  })
+  .then(res => {
+    clearInterval(progressInterval);
+    return res.json();
+  })
+  .then(data => {
+    if (data.success) {
+      // Langsung ke 95% saat response
+      updateProgress(95);
+      
+      setTimeout(() => {
+        updateProgress(100);
+        setTimeout(() => {
+          showLoading(false);
+          closeImportDialog();
+          
+          // Show success modal
+          showSuccessModal(
+            "Data Berhasil Diimport!",
+            data.message + "\n\nHalaman akan dimuat ulang dalam 2 detik..."
+          );
+          
+          // Auto refresh setelah 2 detik
+          setTimeout(() => {
+            closeSuccessModal();
+            location.reload();
+          }, 2000);
+        }, 300);
+      }, 200);
+    } else {
+      clearInterval(progressInterval);
+      showLoading(false);
+      showImportError(data.message || "Import gagal");
+    }
+  })
+  .catch(err => {
+    clearInterval(progressInterval);
+    showLoading(false);
+    showImportError("Error: " + err.message);
+  });
+}
+
+function showImportError(msg) {
+  const errorDiv = document.getElementById("importError");
+  errorDiv.textContent = msg;
+  errorDiv.style.display = "block";
+}
+
+function showLoading(show = true) {
+  document.getElementById("loadingOverlay").style.display = show ? "flex" : "none";
+}
+
+function updateProgress(percent) {
+  document.getElementById("progressBar").style.width = percent + "%";
+  document.getElementById("progressText").textContent = percent + "%";
+}
+
+// Navigation Kelompok
+function prevKelompok() {
+  if (kelompokList.length === 0) return;
+  currentKelompokIndex = (currentKelompokIndex - 1 + kelompokList.length) % kelompokList.length;
+  document.getElementById("kelompok").value = kelompokList[currentKelompokIndex];
+  render();
+}
+
+function nextKelompok() {
+  if (kelompokList.length === 0) return;
+  currentKelompokIndex = (currentKelompokIndex + 1) % kelompokList.length;
+  document.getElementById("kelompok").value = kelompokList[currentKelompokIndex];
+  render();
+}
+
+// Success Modal
+function showSuccessModal(title, message) {
+  document.getElementById("successTitle").textContent = title;
+  document.getElementById("successMessage").textContent = message;
+  document.getElementById("successModal").style.display = "flex";
+}
+
+function closeSuccessModal() {
+  document.getElementById("successModal").style.display = "none";
+}
+
+// Modal Tanggal Pertemuan
+function openTanggalPertemuanModal() {
+  document.getElementById("tanggalPertemuanModal").style.display = "flex";
+  document.getElementById("tanggalError").style.display = "none";
+  document.getElementById("hariKerjaInfo").style.display = "none";
+}
+
+function closeTanggalPertemuanModal() {
+  document.getElementById("tanggalPertemuanModal").style.display = "none";
+}
+
+function generatePertemuanDates() {
+  const tanggalMulai = document.getElementById("tanggalMulai").value;
+  const tanggalBerakhir = document.getElementById("tanggalBerakhir").value;
+  const applyTo = document.querySelector('input[name="applyTo"]:checked').value;
+  const errorDiv = document.getElementById("tanggalError");
+  const infoDiv = document.getElementById("hariKerjaInfo");
+  const infoText = document.getElementById("hariKerjaText");
+  
+  errorDiv.style.display = "none";
+  infoDiv.style.display = "none";
+  
+  // Validasi
+  if (!tanggalMulai || !tanggalBerakhir) {
+    errorDiv.textContent = "Mohon isi tanggal mulai dan tanggal berakhir";
+    errorDiv.style.display = "block";
+    return;
+  }
+  
+  const mulai = new Date(tanggalMulai);
+  const berakhir = new Date(tanggalBerakhir);
+  
+  if (mulai > berakhir) {
+    errorDiv.textContent = "Tanggal mulai tidak boleh lebih besar dari tanggal berakhir";
+    errorDiv.style.display = "block";
+    return;
+  }
+  
+  // Hitung hari kerja
+  const hariKerja = hitungHariKerja(mulai, berakhir);
+  
+  if (hariKerja < 14) {
+    errorDiv.textContent = "Jumlah hari kerja (" + hariKerja + ") kurang dari 14 pertemuan. Silakan perluas tanggal.";
+    errorDiv.style.display = "block";
+    return;
+  }
+  
+  // Tampil info
+  infoText.textContent = "✓ Total hari kerja: " + hariKerja + " hari | Periode: " + formatTanggal(mulai) + " s/d " + formatTanggal(berakhir);
+  infoDiv.style.display = "block";
+  
+  // Generate tanggal pertemuan (ambil 14 hari kerja pertama)
+  const pertemuanList = [];
+  let hitung = 0;
+  let currentDate = new Date(mulai);
+  
+  while (hitung < 14 && currentDate <= berakhir) {
+    const dayOfWeek = currentDate.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      pertemuanList.push(new Date(currentDate));
+      hitung++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  // Tentukan kelompok mana yang akan di-update
+  let targetKelompok = [];
+  if (applyTo === "single") {
+    targetKelompok = [document.getElementById("kelompokLaporan").value];
+  } else {
+    targetKelompok = kelompokList;
+  }
+  
+  // Simpan tanggal pertemuan untuk setiap kelompok target
+  targetKelompok.forEach(kelompok => {
+    if (!pertemuanDates[kelompok]) {
+      pertemuanDates[kelompok] = {};
+    }
+    
+    pertemuanList.forEach((date, idx) => {
+      pertemuanDates[kelompok][idx + 1] = formatTanggal(date);
+    });
+  });
+  
+  // Auto close modal dan render laporan
+  setTimeout(() => {
+    closeTanggalPertemuanModal();
+    const target = applyTo === "single" ? "kelompok saat ini" : "semua kelompok";
+    alert("✓ Jadwal " + hariKerja + " hari kerja berhasil dibuat untuk " + target + "!");
+    renderLaporan();
+  }, 500);
+}
+
+// Tab Switching
+function switchTab(tabName) {
+  // Hide all tabs
+  const tabs = document.querySelectorAll('.tab-content');
+  tabs.forEach(tab => tab.style.display = 'none');
+  
+  // Show selected tab
+  document.getElementById(tabName).style.display = 'block';
+  
+  // Update button styles
+  document.getElementById('tabBtn-presensi').style.background = tabName === 'tab-presensi' ? '#007bff' : '#f0f0f0';
+  document.getElementById('tabBtn-presensi').style.color = tabName === 'tab-presensi' ? 'white' : '#333';
+  document.getElementById('tabBtn-laporan').style.background = tabName === 'tab-laporan' ? '#17a2b8' : '#f0f0f0';
+  document.getElementById('tabBtn-laporan').style.color = tabName === 'tab-laporan' ? 'white' : '#333';
+}
+
+// Navigation Laporan
+function prevKelompokLaporan() {
+  if (kelompokList.length === 0) return;
+  currentLaporanIndex = (currentLaporanIndex - 1 + kelompokList.length) % kelompokList.length;
+  document.getElementById("kelompokLaporan").value = kelompokList[currentLaporanIndex];
+  renderLaporan();
+}
+
+function nextKelompokLaporan() {
+  if (kelompokList.length === 0) return;
+  currentLaporanIndex = (currentLaporanIndex + 1) % kelompokList.length;
+  document.getElementById("kelompokLaporan").value = kelompokList[currentLaporanIndex];
+  renderLaporan();
+}
+
+// Generate dummy presensi data dengan target realistic
+function generateDummyPresensi(nim) {
+  if (!laporanData[nim]) {
+    // Target random: 12, 13, atau 14
+    const target = [12, 13, 14][Math.floor(Math.random() * 3)];
+    
+    // Generate 14 pertemuan dengan jaminan total == target
+    const presensi = [];
+    let hitung = 0;
+    
+    // Acak posisi kehadiran sesuai target
+    for (let i = 0; i < 14; i++) {
+      const sisaPertunjukan = 14 - i;
+      const sisaHadir = target - hitung;
+      
+      // Jika sisa hadir == sisa pertemuan, wajib hadir
+      // Jika sisa hadir == 0, wajib absen
+      // Jika tidak, random
+      if (sisaHadir === sisaPertunjukan) {
+        presensi[i] = true;
+        hitung++;
+      } else if (sisaHadir === 0) {
+        presensi[i] = false;
+      } else {
+        // Random dengan proportional chance
+        const chance = sisaHadir / sisaPertunjukan;
+        presensi[i] = Math.random() < chance;
+        if (presensi[i]) hitung++;
+      }
+    }
+    
+    laporanData[nim] = {
+      target: target,
+      presensi: presensi,
+      total: hitung
+    };
+  }
+  return laporanData[nim];
+}
+
+// Hitung rank untuk setiap pertemuan (logic dari Excel RANK)
+function getPresenceStatus(nim, pertemuan, threshold) {
+  const presensiData = generateDummyPresensi(nim);
+  
+  // Hitung total hadir sampai pertemuan ini
+  let totalHadir = 0;
+  for (let i = 0; i < pertemuan; i++) {
+    if (presensiData[i]) totalHadir++;
+  }
+  
+  // Hitung rank berdasarkan pertemuan (simpel: yang hadir lebih banyak rank lebih tinggi)
+  // Jika hadir >= threshold, tampil ✅, jika tidak ❌
+  return totalHadir >= threshold ? '✅' : '❌';
+}
+
+// Render Laporan
+function renderLaporan() {
+  const k = document.getElementById("kelompokLaporan").value;
+  if (!k || !dataKelompok[k]) return;
+  
+  const obj = dataKelompok[k];
+  const peserta = obj.data;
+  
+  // Get current date and time
+  const now = new Date();
+  const tanggal = now.toLocaleDateString('id-ID', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit' 
+  });
+  const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  
+  let html = '<div class="laporan-container">';
+  
+  // Header Sederhana
+  html += '<h2 style="text-align:center; margin:0 0 3px 0; font-size:12pt;">LAPORAN PRESENSI KELOMPOK PEMBELAJARAN AL-QUR\'AN</h2>';
+  html += '<p style="text-align:center; margin:0 0 10px 0; font-size:9pt; color:#666;">Kelompok: ' + k + ' | Instruktur: ' + obj.instruktur + '</p>';
+  html += '<p style="text-align:right; margin:0 0 10px 0; font-size:8pt; color:#666;">Dicetak: ' + tanggal + ' ' + jam + '</p>';
+  
+  html += '<table class="laporan-table">';
+  html += '<thead>';
+  html += '<tr>';
+  html += '<th class="col-no">No</th>';
+  html += '<th class="col-nim">NIM</th>';
+  html += '<th class="col-nama">Nama Peserta</th>';
+  
+  // Header pertemuan dengan tanggal
+  const pertemuanTanggal = pertemuanDates[k] || {};
+  for (let i = 1; i <= 14; i++) {
+    const tglPert = pertemuanTanggal[i] ? '<br><span style="font-size:7pt;">' + pertemuanTanggal[i] + '</span>' : '';
+    html += '<th class="col-pertemuan">' + i + tglPert + '</th>';
+  }
+  
+  html += '<th class="col-total">Total</th>';
+  html += '</tr>';
+  html += '</thead>';
+  html += '<tbody>';
+  
+  // Data peserta
+  peserta.forEach((m, idx) => {
+    const data = generateDummyPresensi(m.nim);
+    const presensi = data.presensi;
+    const total = data.total;
+    
+    html += '<tr>';
+    html += '<td>' + (idx + 1) + '</td>';
+    html += '<td>' + m.nim + '</td>';
+    html += '<td class="col-nama">' + m.nama + '</td>';
+    
+    // Tampil hadir/absen per pertemuan
+    presensi.forEach((hadir) => {
+      const status = hadir ? '<span class="mark-hadir">✅</span>' : '<span class="mark-absen">❌</span>';
+      html += '<td>' + status + '</td>';
+    });
+    
+    // Total hadir
+    const statusTotal = total >= 12 ? '<span class="mark-hadir">' + total + '</span>' : '<span class="mark-absen">' + total + '</span>';
+    html += '<td class="col-total" style="background:#f0f0f0;">' + statusTotal + '</td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody>';
+  html += '</table>';
+  
+  // Footer
+  html += '<div style="margin-top:10px; font-size:8pt; text-align:center; color:#666;">';
+  html += 'Unit Pelaksana: BPP-MKWK UMM<br>';
+  html += 'Sumber Data: https://sim-slq.umm.ac.id/mod/attendance/';
+  html += '</div>';
+  
+  html += '</div>';
+  
+  document.getElementById("output").innerHTML = html;
+}
+
+// Muat data saat page load
+window.addEventListener('load', loadData);
+</script>
+
+</body>
+</html>
