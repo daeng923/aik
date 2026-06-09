@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Administrasi Akademik - UMM</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Library html-docx-js dihapus karena bermasalah, digantikan dengan metode Native Blob -->
+
+  <style>
+    body { 
+      user-select: none; 
+      -webkit-user-select: none; 
+    }
+    
+    /* MODIFIKASI UKURAN KOMPAK KETIKA DILAKUKAN RENDER PORTRAIT PDF */
+    .pdf-portrait-compact table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    .pdf-portrait-compact th {
+      padding: 5px 2px !important;
+      font-size: 10px !important; 
+      background-color: #f3f4f6 !important;
+      color: #1f2937 !important;
+      border: 1px solid #9ca3af !important;
+      text-transform: uppercase !important;
+    }
+    .pdf-portrait-compact td {
+      padding: 4px 2px !important;
+      font-size: 10px !important;
+      border: 1px solid #d1d5db !important;
+    }
+    .pdf-portrait-compact .kop-surat {
+      padding-bottom: 12px !important;
+      margin-bottom: 12px !important;
+      border-bottom: 2px solid #1f2937 !important;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased font-sans min-h-screen flex flex-col">
+
+  <header class="bg-blue-800 text-white shadow-lg p-5 sticky top-0 z-50 no-print">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-blue-900 rounded-xl">
+          <i class="fa-solid fa-graduation-cap text-3xl text-yellow-400"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-wide">Sistem Administrasi Akademik UMM</h1>
+          <p class="text-xs text-blue-200">Manajemen Penggajian Transportasi & Kroscek Presensi Lapangan</p>
+        </div>
+      </div>
+      
+      <div class="flex bg-blue-900 p-1 rounded-xl border border-blue-700/50">
+        <button onclick="switchMainTab('tab-rekapan-hr')" id="btn-tab-rekapan" class="px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow flex items-center gap-2">
+          <i class="fa-solid fa-wallet"></i> Rekapan HR Transport
+        </button>
+        <button onclick="switchMainTab('tab-kroscek-individu')" id="btn-tab-kroscek" class="px-4 py-2 text-blue-200 hover:text-white rounded-lg text-sm font-semibold transition flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass"></i> Kroscek Nama Individu
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 md:p-6 flex-grow w-full space-y-6">
+    
+    <div id="section-rekapan-hr" class="space-y-4">
+      
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <label class="text-sm font-semibold text-gray-600 flex items-center gap-1.5">
+            <i class="fa-solid fa-filter text-blue-800"></i> Filter Status Kolom G:
+          </label>
+          <select id="filter-status-g" onchange="aplikasikanFilterStatusG()" class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">-- Tampilkan Semua Status --</option>
+          </select>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <button onclick="cetakPdfRekapan()" class="px-5 py-2.5 bg-rose-700 hover:bg-rose-600 text-white text-sm font-semibold rounded-xl shadow transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-file-pdf"></i> Dokumen PDF (Portrait)
+          </button>
+          <button onclick="downloadWordRekapan()" class="px-5 py-2.5 bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl shadow transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-file-word"></i> Download Word (.doc)
+          </button>
+        </div>
+      </div>
+
+      <div id="print-area-pdf" class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden p-4">
+        
+        <div class="kop-surat pb-4 mb-4 text-center flex flex-col items-center justify-center space-y-1">
+          <h2 class="text-lg font-bold text-gray-900 uppercase tracking-wide">Universitas Muhammadiyah Malang</h2>
+          <h3 class="text-sm font-semibold text-gray-700">Laporan Rekapitulasi Honorarium Transportasi Mengajar Dosen</h3>
+          <p class="text-xs text-gray-400 font-mono">Dokumen Lampiran Surat Pengajuan Resmi Valid &bull; 2026</p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse" id="table-rekapan-utama" border="1" style="border-collapse: collapse; width: 100%;">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-100 font-bold tracking-wider border-b border-gray-200">
+              <tr>
+                <th class="px-2 py-3 text-center w-12" style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">No</th>
+                <th class="px-3 py-3 w-56" style="border: 1px solid #d1d5db; padding: 8px;">Nama Dosen</th>
+                <th class="px-2 py-3 text-center w-20" style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">Jml Kelas</th>
+                <th class="px-2 py-3 text-center w-20" style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">Jml Minggu</th>
+                <th class="px-2 py-3 text-center w-24" style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">Total Kehadiran</th>
+                <th class="px-3 py-3 text-right w-36" style="border: 1px solid #d1d5db; padding: 8px; text-align: right;">Nominal Transport</th>
+                <th class="px-3 py-3 text-right w-36" style="border: 1px solid #d1d5db; padding: 8px; text-align: right;">Total HR Transport</th>
+                <th class="px-2 py-3 text-center w-24 no-print" style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">Status G</th>
+              </tr>
+            </thead>
+            <tbody id="body-rekapan-hr" class="divide-y divide-gray-100">
+              <tr>
+                <td colspan="8" class="text-center py-12 text-gray-400">Menghubungkan ke database sheet rekapan...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="section-kroscek-individu" class="space-y-6 hidden no-print">
+      <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 max-w-2xl mx-auto text-center space-y-4">
+        <h2 class="text-md font-semibold text-gray-700">Masukkan Nama Dosen Yang Ingin Dikroscek:</h2>
+        <div class="flex flex-col sm:flex-row gap-2 justify-center">
+          <input type="text" id="input-nama" placeholder="Contoh: Suryo..." class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition" onkeypress="if(event.keyCode===13) cariDosen()">
+          <button onclick="cariDosen()" class="px-6 py-2.5 bg-blue-800 hover:bg-blue-700 text-white font-medium rounded-xl shadow flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-magnifying-glass"></i> Periksa
+          </button>
+        </div>
+      </div>
+
+      <div id="loading" class="hidden flex-col items-center justify-center py-10">
+        <div class="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-blue-800 mb-2"></div>
+        <p class="text-gray-400 text-xs">Menyisir kecocokan hari...</p>
+      </div>
+
+      <div id="summary-cards" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <div class="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex justify-between items-center">
+          <div><p class="text-xs text-gray-400 font-medium uppercase">Sesuai Jadwal</p><h4 class="text-2xl font-bold text-emerald-800" id="count-sesuai">0</h4></div>
+          <span class="text-xs font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded">Valid</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-rose-100 shadow-sm flex justify-between items-center">
+          <div><p class="text-xs text-gray-400 font-medium uppercase">Di Luar Jadwal</p><h4 class="text-2xl font-bold text-rose-800" id="count-luar">0</h4></div>
+          <span class="text-xs font-semibold px-2 py-0.5 bg-rose-100 text-rose-800 rounded">Butuh Validasi</span>
+        </div>
+      </div>
+
+      <div id="result-area" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-fit">
+          <div class="p-4 bg-gray-50 border-b border-gray-100"><h3 class="font-bold text-xs uppercase tracking-wider text-blue-800">1. Jadwal Resmi (Sheet2)</h3></div>
+          <table class="w-full text-sm text-left"><tbody id="body-jadwal" class="divide-y divide-gray-100"></tbody></table>
+        </div>
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-fit">
+          <div class="p-4 bg-gray-50 border-b border-gray-100"><h3 class="font-bold text-xs uppercase tracking-wider text-emerald-800">2. Log Lapangan (Sheet1)</h3></div>
+          <table class="w-full text-sm text-left"><tbody id="body-kehadiran" class="divide-y divide-gray-100"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-4 text-center text-xs text-gray-400 mt-auto no-print">
+    &copy; 2026 Universitas Muhammadiyah Malang. Verifikasi Presensi Kustom.
+  </footer>
+
+  <script>
+    let masterDataRekapan = []; 
+    // TAMBAHAN: Variabel global endpoint API ke Google Apps Script Anda
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyk53kXmHkmVFwJj-7IRw_TSMq95YCgenjZ53YlRV4XWUU17IZ31tHG6ooub3-NKa8Q/exec";
+
+    // FUNGSI HELPER UNTUK TAMPILAN: Memindah gelar depan ke belakang
+    function formatNamaGelarBelakang(namaRaw) {
+      if (!namaRaw) return "";
+      let nama = String(namaRaw).trim();
+      
+      // Regex disesuaikan: Menggunakan \b (batas kata) dan [\.,]*\s* untuk mencakup titik, koma, spasi, atau tanpa tanda baca
+      let pattern = /^((?:(?:Prof|Dr|dr|drg|drh|Ir|Drs|Dra|H|Hj|KH|Ns|Apt)\b[\.,]*\s*)+)(.*)$/i;
+      let match = nama.match(pattern);
+
+      if (match) {
+        // Membersihkan spasi di awal/akhir kumpulan gelar
+        let gelarDepan = match[1].trim();
+        // (Opsional) Jika ingin menghapus tanda koma bawaan dari "Drs.," agar lebih rapi, hilangkan komentar di bawah ini:
+        // gelarDepan = gelarDepan.replace(/,+$/, ''); 
+        
+        let sisaNama = match[2].trim();   
+        return sisaNama + ", " + gelarDepan;
+      }
+      return nama;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // PERUBAHAN: Gunakan fetch API menggantikan google.script.run
+      fetch(GAS_URL + "?action=getRekapan")
+        .then(response => response.json())
+        .then(data => initRekapanPage(data))
+        .catch(error => {
+          console.error("Gagal terhubung ke database API:", error);
+          document.getElementById('body-rekapan-hr').innerHTML = `<tr><td colspan="8" class="text-center py-8 text-rose-500 font-bold">Gagal mengambil data rekapan. Pastikan pengaturan Deploy GAS sudah benar (Anyone).</td></tr>`;
+        });
+    });
+
+    function initRekapanPage(response) {
+      // 1. Tampung data dari database
+      masterDataRekapan = response.data;
+      
+      // 2. Lakukan pengurutan murni di sisi front-end menggunakan nama yang sudah diformat
+      masterDataRekapan.sort((a, b) => {
+        let namaA = formatNamaGelarBelakang(a.nama).toLowerCase();
+        let namaB = formatNamaGelarBelakang(b.nama).toLowerCase();
+        return namaA.localeCompare(namaB);
+      });
+
+      // 3. Set ulang nomor urut setelah tabel disortir
+      masterDataRekapan.forEach((item, index) => {
+        item.no = index + 1;
+      });
+
+      const selectFilter = document.getElementById('filter-status-g');
+      selectFilter.innerHTML = '<option value="ALL">-- Tampilkan Semua Status --</option>';
+      
+      if (response.statuses && response.statuses.length > 0) {
+        response.statuses.forEach(statusName => {
+          const option = document.createElement('option');
+          option.value = statusName;
+          option.innerText = statusName;
+          selectFilter.appendChild(option);
+        });
+      }
+      aplikasikanFilterStatusG();
+    }
+
+    function aplikasikanFilterStatusG() {
+      const filterVal = document.getElementById('filter-status-g').value;
+      const tbody = document.getElementById('body-rekapan-hr');
+      tbody.innerHTML = "";
+
+      if(masterDataRekapan.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-400">Tidak ada data di sheet 'rekapan', harap jalankan perhitungan di spreadsheet.</td></tr>`;
+        return;
+      }
+
+      masterDataRekapan.forEach(item => {
+        if (filterVal !== "ALL" && item.status !== filterVal) return;
+
+        let finalTotalHr = item.kehadiran === 0 ? 0 : item.totalHr;
+
+        const tr = document.createElement('tr');
+        tr.className = item.kehadiran === 0 ? "bg-gray-50/50 text-gray-400 transition-colors" : "hover:bg-gray-50 transition-colors";
+        
+        let badgeStyle = item.status === "VALID" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200";
+        let hrColorClass = item.kehadiran === 0 ? "text-gray-400 line-through" : "text-blue-900 font-bold";
+
+        // Tampilkan nama dengan format gelar di belakang menggunakan fungsi helper
+        let namaDitampilkan = formatNamaGelarBelakang(item.nama);
+
+        tr.innerHTML = `
+          <td class="px-2 py-3 text-center font-medium" style="border: 1px solid #e5e7eb; text-align: center;">${item.no}</td>
+          <td class="px-3 py-3 font-bold ${item.kehadiran === 0 ? 'text-gray-400' : 'text-gray-900'}" style="border: 1px solid #e5e7eb;">${namaDitampilkan}</td>
+          <td class="px-2 py-3 text-center" style="border: 1px solid #e5e7eb; text-align: center;">${item.kelas}</td>
+          <td class="px-2 py-3 text-center" style="border: 1px solid #e5e7eb; text-align: center;">${item.minggu}</td>
+          <td class="px-2 py-3 text-center font-bold ${item.kehadiran > 0 ? 'text-emerald-700' : 'text-rose-500'}" style="border: 1px solid #e5e7eb; text-align: center;">${item.kehadiran}</td>
+          <td class="px-3 py-3 text-right font-mono" style="border: 1px solid #e5e7eb; text-align: right;">Rp ${item.nominal.toLocaleString('id-ID')}</td>
+          <td class="px-3 py-3 text-right font-mono ${hrColorClass}" style="border: 1px solid #e5e7eb; text-align: right;">Rp ${finalTotalHr.toLocaleString('id-ID')}</td>
+          <td class="px-2 py-3 text-center no-print" style="border: 1px solid #e5e7eb; text-align: center;">
+            <span class="px-2 py-0.5 text-xs font-bold border rounded-md ${badgeStyle}">${item.status}</span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // FITUR: GENERATE & DOWNLOAD BERKAS MICROSOFT WORD (.DOC)
+    function downloadWordRekapan() {
+      const filterVal = document.getElementById('filter-status-g').value;
+      
+      // Menyusun HTML Shell khusus agar bisa dibaca optimal sebagai format MS Word
+      let htmlContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Laporan Rekapitulasi</title>
+        </head>
+        <body>
+        <div style="font-family: 'Arial', sans-serif; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="text-transform: uppercase; margin: 0; font-size: 16px;">Universitas Muhammadiyah Malang</h2>
+            <h3 style="margin: 5px 0 0 0; font-size: 14px;">Laporan Rekapitulasi Honorarium Transportasi Mengajar Dosen</h3>
+            <p style="font-size: 11px; color: #555; margin: 5px 0 0 0;">Dokumen Lampiran Surat Pengajuan Resmi Valid &bull; 2026</p>
+            <hr style="border: 1px solid #000; margin-top: 15px;" />
+          </div>
+          <table border="1" style="border-collapse: collapse; width: 100%; font-size: 11px;">
+            <thead>
+              <tr style="background-color: #f2f2f2; font-weight: bold; text-align: center;">
+                <th style="padding: 6px; width: 40px;">No</th>
+                <th style="padding: 6px; text-align: left;">Nama Dosen</th>
+                <th style="padding: 6px; width: 70px;">Jml Kelas</th>
+                <th style="padding: 6px; width: 70px;">Jml Minggu</th>
+                <th style="padding: 6px; width: 80px;">Total Kehadiran</th>
+                <th style="padding: 6px; text-align: right; width: 110px;">Nominal Transport</th>
+                <th style="padding: 6px; text-align: right; width: 110px;">Total HR Transport</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      let counterNoPrint = 1;
+      masterDataRekapan.forEach(item => {
+        // Melakukan penyaringan bawaan (Dosen yang 0 kehadiran otomatis dibuang)
+        if (item.kehadiran === 0) return;
+        if (filterVal !== "ALL" && item.status !== filterVal) return;
+
+        let namaDitampilkan = formatNamaGelarBelakang(item.nama);
+
+        htmlContent += `
+          <tr>
+            <td style="padding: 6px; text-align: center;">${counterNoPrint++}</td>
+            <td style="padding: 6px; font-weight: bold;">${namaDitampilkan}</td>
+            <td style="padding: 6px; text-align: center;">${item.kelas}</td>
+            <td style="padding: 6px; text-align: center;">${item.minggu}</td>
+            <td style="padding: 6px; text-align: center; font-weight: bold;">${item.kehadiran}</td>
+            <td style="padding: 6px; text-align: right;">Rp ${item.nominal.toLocaleString('id-ID')}</td>
+            <td style="padding: 6px; text-align: right; font-weight: bold;">Rp ${item.totalHr.toLocaleString('id-ID')}</td>
+          </tr>
+        `;
+      });
+
+      htmlContent += `
+            </tbody>
+          </table>
+        </div>
+        </body>
+        </html>
+      `;
+
+      // Eksekusi Download Menggunakan Teknologi Blob Native Browser (Tanpa Plugin)
+      let blob = new Blob(['\ufeff', htmlContent], {
+        type: 'application/msword'
+      });
+      
+      let url = URL.createObjectURL(blob);
+      let link = document.createElement('a');
+      link.href = url;
+      link.download = 'Rekapan_Pengajuan_HR_Transport_UMM_' + filterVal + '.doc';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Pembersihan elemen
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    }
+
+    // FITUR: CETAK PDF PORTRAIT (UTUH 7 KOLOM & TANPA MENAMPILKAN KOLOM STATUS G)
+    function cetakPdfRekapan() {
+      const tbody = document.getElementById('body-rekapan-hr');
+      const containerPdf = document.getElementById('print-area-pdf');
+      
+      const originalHtml = tbody.innerHTML;
+      tbody.innerHTML = "";
+      let counterNoPrint = 1;
+
+      masterDataRekapan.forEach(item => {
+        if (item.kehadiran === 0) return;
+
+        const filterVal = document.getElementById('filter-status-g').value;
+        if (filterVal !== "ALL" && item.status !== filterVal) return;
+
+        let namaDitampilkan = formatNamaGelarBelakang(item.nama);
+
+        // Susun struktur baris murni 7 Kolom tanpa tag Status G
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-gray-200";
+        tr.innerHTML = `
+          <td class="text-center font-medium" style="border: 1px solid #9ca3af; text-align: center; padding: 4px 2px;">${counterNoPrint++}</td>
+          <td class="font-bold" style="border: 1px solid #9ca3af; padding: 4px 2px;">${namaDitampilkan}</td>
+          <td class="text-center" style="border: 1px solid #9ca3af; text-align: center; padding: 4px 2px;">${item.kelas}</td>
+          <td class="text-center" style="border: 1px solid #9ca3af; text-align: center; padding: 4px 2px;">${item.minggu}</td>
+          <td class="text-center font-bold text-emerald-700" style="border: 1px solid #9ca3af; text-align: center; padding: 4px 2px;">${item.kehadiran}</td>
+          <td class="text-right font-mono" style="border: 1px solid #9ca3af; text-align: right; padding: 4px 2px;">Rp ${item.nominal.toLocaleString('id-ID')}</td>
+          <td class="text-right font-bold text-blue-900 font-mono" style="border: 1px solid #9ca3af; text-align: right; padding: 4px 2px;">Rp ${item.totalHr.toLocaleString('id-ID')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (tbody.children.length === 0) {
+        alert("Tidak ada data dengan kehadiran > 0 untuk diajukan ke PDF!");
+        tbody.innerHTML = originalHtml;
+        return;
+      }
+
+      // Sembunyikan Header Elemen Status G pada tabel saat PDF di-generate
+      const thStatus = containerPdf.querySelector('th.no-print');
+      if (thStatus) thStatus.style.display = 'none';
+
+      // Aktifkan mode kompak Portrait
+      containerPdf.classList.add('pdf-portrait-compact');
+      const pilihanFilter = document.getElementById('filter-status-g').value;
+      
+      const opsi = {
+        margin:       [10, 8, 10, 8], // Optimasi margin A4 Portrait
+        filename:     'Rekapan_Pengajuan_HR_Transport_UMM_' + pilihanFilter + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2.5, useCORS: true, letterRendering: true }, 
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+      };
+
+      html2pdf().set(opsi).from(containerPdf).toPdf().get('pdf').then(function (pdf) {
+        // Kembalikan objek visual header di halaman web
+        if (thStatus) thStatus.style.display = ''; 
+        containerPdf.classList.remove('pdf-portrait-compact');
+        tbody.innerHTML = originalHtml;
+      }).save();
+    }
+
+    // MAIN TAB NAVIGATOR SWITCH
+    function switchMainTab(tabId) {
+      document.getElementById('section-rekapan-hr').classList.add('hidden');
+      document.getElementById('section-kroscek-individu').classList.add('hidden');
+      const btnRekapan = document.getElementById('btn-tab-rekapan');
+      const btnKroscek = document.getElementById('btn-tab-kroscek');
+
+      if(tabId === 'tab-rekapan-hr') {
+        document.getElementById('section-rekapan-hr').classList.remove('hidden');
+        btnRekapan.className = "px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow flex items-center gap-2";
+        btnKroscek.className = "px-4 py-2 text-blue-200 hover:text-white rounded-lg text-sm font-semibold transition flex items-center gap-2";
+      } else {
+        document.getElementById('section-kroscek-individu').classList.remove('hidden');
+        btnRekapan.className = "px-4 py-2 text-blue-200 hover:text-white rounded-lg text-sm font-semibold transition flex items-center gap-2";
+        btnKroscek.className = "px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow flex items-center gap-2";
+      }
+    }
+
+    // INDIVIDUAL SEARCH LOGIC
+    function cariDosen() {
+      const keyword = document.getElementById('input-nama').value;
+      if(!keyword.trim()) return alert("Masukkan nama dosen!");
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('summary-cards').classList.add('hidden');
+      document.getElementById('result-area').classList.add('hidden');
+      
+      // PERUBAHAN: Gunakan fetch API menggantikan google.script.run
+      fetch(GAS_URL + "?action=kroscek&keyword=" + encodeURIComponent(keyword))
+        .then(response => response.json())
+        .then(data => showResult(data))
+        .catch(error => {
+          console.error("Gagal melakukan pencarian:", error);
+          document.getElementById('loading').classList.add('hidden');
+          alert("Koneksi ke server database GAS terputus atau gagal.");
+        });
+    }
+
+    function showResult(data) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('summary-cards').classList.remove('hidden');
+      document.getElementById('result-area').classList.remove('hidden');
+      let totalSesuaiJadwal = 0; let totalDiLuarJadwal = 0;
+
+      const bJadwal = document.getElementById('body-jadwal'); bJadwal.innerHTML = "";
+      if(data.jadwal.length === 0) bJadwal.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Tidak terdaftar di jadwal</td></tr>`;
+      else {
+        data.jadwal.forEach(item => {
+          let namaDitampilkan = formatNamaGelarBelakang(item.namaDosen);
+          bJadwal.innerHTML += `<tr class="hover:bg-gray-50"><td class="px-4 py-3 font-medium text-gray-900">${namaDitampilkan}</td><td class="px-4 py-3 text-center"><span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-bold rounded uppercase">${item.hari}</span></td></tr>`;
+        });
+      }
+
+      const bKehadiran = document.getElementById('body-kehadiran'); bKehadiran.innerHTML = "";
+      if(data.kehadiran.length === 0) bKehadiran.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Tidak ada log presensi</td></tr>`;
+      else {
+        data.kehadiran.forEach(item => {
+          let badgeStatus = "";
+          if(item.valid) { totalSesuaiJadwal++; badgeStatus = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded">Sesuai Jadwal</span>`; }
+          else { totalDiLuarJadwal++; badgeStatus = `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-xs font-bold rounded">Di Luar Jadwal</span>`; }
+          
+          let namaDitampilkan = formatNamaGelarBelakang(item.nama);
+          bKehadiran.innerHTML += `<tr class="hover:bg-gray-50"><td class="px-4 py-3"><div class="font-medium text-gray-900">${namaDitampilkan}</div><div class="text-xs text-gray-400">${item.nip} | ${item.unit}</div></td><td class="px-4 py-3 text-center text-gray-700"><div class="font-bold text-xs text-blue-800 uppercase mb-1">${item.hari}</div><div class="text-xs font-mono">${item.tanggal}</div></td><td class="px-4 py-3 text-center text-gray-600 font-mono text-xs">${item.jam}</td><td class="px-4 py-3 text-center">${badgeStatus}</td></tr>`;
+        });
+      }
+      document.getElementById('count-sesuai').innerText = totalSesuaiJadwal;
+      document.getElementById('count-luar').innerText = totalDiLuarJadwal;
+    }
+  </script>
+</body>
+</html>
