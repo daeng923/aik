@@ -143,6 +143,7 @@
     <button onclick="render()" id="btnRender" disabled>Tampilkan</button>
     <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrint" disabled>Cetak Presensi</button>
     <button onclick="openImportDialog()" style="background: #ff9800; margin-left: 10px;">📥 Import Data</button>
+    <button onclick="openMoodleModal()" style="background: #800080; color: white; margin-left: 10px;">📤 Export Moodle</button>
   </div>
 
   <!-- Tab 2: Laporan -->
@@ -200,6 +201,40 @@
     <div style="display:flex; gap:10px; justify-content:flex-end;">
       <button onclick="closeImportDialog()" style="background:#999;">Batal</button>
       <button onclick="importDataAction()" style="background:#ff9800;">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Export Moodle -->
+<div id="moodleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+  <div style="background:white; padding:20px; border-radius:8px; max-width:450px; width:90%;">
+    <h2 style="margin-top:0;">Export CSV Moodle</h2>
+    
+    <div style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px; font-size:9pt;">
+      Fitur ini akan menggabungkan Mahasiswa (sebagai <strong>student</strong>) dan Instruktur (sebagai <strong>teacher</strong>) ke dalam satu file CSV siap upload.
+    </div>
+
+    <div style="margin-bottom:15px;">
+      <label style="display:block; font-weight:bold; margin-bottom:5px;">Shortname Course Moodle (course1):</label>
+      <input type="text" id="moodleCourseInput" placeholder="contoh: PAI-2025" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
+      <p style="font-size:8pt; color:#666; margin:5px 0 0 0;">Harus sesuai dengan <i>shortname</i> course di Moodle.</p>
+    </div>
+
+    <!-- OPSI TAMBAHAN UNTUK MEMBUAT AKUN -->
+    <div style="margin-bottom:20px; background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px;">
+      <label style="display:flex; align-items:flex-start; cursor:pointer;">
+        <input type="checkbox" id="moodleCreateAccount" style="margin-top:3px; margin-right:8px;" checked>
+        <span style="font-weight:bold; font-size:10pt;">Sertakan Data Pembuatan Akun Baru</span>
+      </label>
+      <p style="font-size:8pt; color:#666; margin:5px 0 0 20px;">
+        Centang ini jika ada peserta yang belum memiliki akun Moodle. Sistem akan menambahkan kolom <code style="background:#eee; padding:2px;">firstname</code>, <code style="background:#eee; padding:2px;">lastname</code>, <code style="background:#eee; padding:2px;">email</code>, dan <code style="background:#eee; padding:2px;">password</code>.<br><br>
+        <strong>Default Password:</strong> <code>[NIM]</code> (Contoh: 202510050110001)
+      </p>
+    </div>
+    
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button onclick="closeMoodleModal()" style="background:#999;">Batal</button>
+      <button onclick="generateMoodleCSV()" style="background:#800080;">Generate & Download</button>
     </div>
   </div>
 </div>
@@ -356,11 +391,13 @@ function processData(rows) {
       
       var nim = r[1] || ""; // Kolom B: NIM
       var nama = r[2] || ""; // Kolom C: NAMA
+      var kode_instruktur = r[6] || ""; // Kolom G: KODE INSTRUKTUR
       var instruktur = r[7] || "-"; // Kolom H: INSTRUKTUR
       var link = r[8] || "#"; // Kolom I: LINK WHATSAPP GROUP
       
       if (!dataKelompok[kelompok]) {
         dataKelompok[kelompok] = {
+          kode_instruktur: kode_instruktur, // Menyimpan kode instruktur
           instruktur: instruktur,
           link: link,
           data: []
@@ -1019,6 +1056,106 @@ function renderLaporan() {
   html += '</div>';
   
   document.getElementById("output").innerHTML = html;
+}
+
+// --- FUNGSI EXPORT MOODLE CSV ---
+function openMoodleModal() {
+  if (Object.keys(dataKelompok).length === 0) {
+    alert("Data belum dimuat atau kosong. Silakan tunggu data termuat atau import data terlebih dahulu.");
+    return;
+  }
+  document.getElementById("moodleModal").style.display = "flex";
+  document.getElementById("moodleCourseInput").value = ""; // Reset input
+  // Default checkbox dicheck
+  document.getElementById("moodleCreateAccount").checked = true;
+}
+
+function closeMoodleModal() {
+  document.getElementById("moodleModal").style.display = "none";
+}
+
+function generateMoodleCSV() {
+  const course1 = document.getElementById("moodleCourseInput").value.trim();
+  const includeProfile = document.getElementById("moodleCreateAccount").checked;
+  
+  if (!course1) {
+    alert("Nama Course (course1) tidak boleh kosong!");
+    document.getElementById("moodleCourseInput").focus();
+    return;
+  }
+
+  // Siapkan Array untuk baris CSV (Header)
+  const csvRows = [];
+  
+  if (includeProfile) {
+    // Header Lengkap (Bisa trigger create user)
+    csvRows.push(["username", "firstname", "lastname", "email", "password", "course1", "group1", "role1"]);
+  } else {
+    // Header Enrolment Saja
+    csvRows.push(["username", "course1", "group1", "role1"]);
+  }
+
+  // Looping ke semua kelompok untuk menyusun datanya
+  for (const kelompok in dataKelompok) {
+    const info = dataKelompok[kelompok];
+    
+    // 1. Masukkan baris untuk Instruktur (jika kodenya ada)
+    if (info.kode_instruktur && info.kode_instruktur.trim() !== "") {
+      if (includeProfile) {
+        // Pecah nama menjadi firstname dan lastname (Moodle butuh lastname)
+        let parts = info.instruktur.trim().split(" ");
+        let fname = parts[0] || info.kode_instruktur;
+        let lname = parts.slice(1).join(" ") || "-"; // pakai "-" jika nama cuma 1 kata
+        let email = info.kode_instruktur + "@umm.ac.id"; // contoh format email dosen
+        
+        // Sengaja kosongkan password instruktur, agar jika mereka sudah ada, tidak ter-reset
+        csvRows.push([info.kode_instruktur, fname, lname, email, "", course1, kelompok, "teacher"]);
+      } else {
+        csvRows.push([info.kode_instruktur, course1, kelompok, "teacher"]);
+      }
+    }
+
+    // 2. Masukkan baris untuk seluruh Mahasiswa di kelompok ini
+    info.data.forEach(mhs => {
+      if (mhs.nim && mhs.nim.trim() !== "") {
+        if (includeProfile) {
+          // Pecah nama menjadi firstname dan lastname
+          let parts = mhs.nama.trim().split(" ");
+          let fname = parts[0] || mhs.nim;
+          let lname = parts.slice(1).join(" ") || "-"; // pakai "-" jika nama cuma 1 kata
+          let email = mhs.nim + "@webmail.umm.ac.id"; // email format webmail UMM
+          let password = mhs.nim; // password menggunakan NIM
+          
+          csvRows.push([mhs.nim, fname, lname, email, password, course1, kelompok, "student"]);
+        } else {
+          csvRows.push([mhs.nim, course1, kelompok, "student"]);
+        }
+      }
+    });
+  } // <--- INI KURUNG KURAWAL YANG TERTINGGAL SEBELUMNYA
+
+  // Convert array ke format string CSV
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvRows.forEach(rowArray => {
+    // Escape string dengan petik agar spasi/koma di nama kelompok aman
+    let row = rowArray.map(cell => {
+      const escaped = String(cell).replace(/"/g, '""');
+      return `"${escaped}"`;
+    }).join(",");
+    csvContent += row + "\r\n";
+  });
+
+  // Eksekusi Download File
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `moodle_enroll_${course1}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  // Tutup Modal
+  closeMoodleModal();
 }
 
 // Muat data saat page load
