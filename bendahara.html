@@ -182,14 +182,13 @@
     <!-- STATS GABUNGAN -->
     <div class="section-title" style="justify-content: space-between; flex-wrap: wrap;">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom: 8px;">
-        Ringkasan Keseluruhan <span id="statsLabel"></span>
+        Ringkasan Keseluruhan <span id="statsLabel" style="color:var(--pri);font-weight:700;"></span>
       </div>
-      <!-- FITUR BARU: MULTI-CHECKBOX (MEMILIH SUMBER PEMASUKAN) -->
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <label id="cbIncludeWrap" style="font-size:11px; font-weight:600; color:var(--pri); display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--pri-ll); padding:6px 12px; border-radius:20px; user-select:none; border: 1px solid var(--pri-l);">
-          <input type="checkbox" id="cbIncludeSemua" onchange="doFilter()" style="width:14px;height:14px;accent-color:var(--pri);cursor:pointer;">
-          + Kegiatan Lain
-        </label>
+      <!-- FITUR BARU: MULTI-CHECKBOX DINAMIS (MEMILIH SUMBER PEMASUKAN) -->
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <div id="dynamicCheckboxesContainer" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <!-- Checkbox per kegiatan akan digenerate otomatis di sini -->
+        </div>
         <label id="cbIncludeFOWrap" style="display:none; font-size:11px; font-weight:600; color:#d97706; align-items:center; gap:6px; cursor:pointer; background:#fffbeb; padding:6px 12px; border-radius:20px; user-select:none; border: 1px solid #fef3c7;">
           <input type="checkbox" id="cbIncludeFO" onchange="doFilter()" style="width:14px;height:14px;accent-color:#d97706;cursor:pointer;">
           + Denda FO
@@ -343,11 +342,12 @@ function doLogin(){
     // Tampilkan Widget Denda FO hanya untuk Admin
     document.getElementById('dendaFOWrap').style.display=(USER.role==='kegiatan')?'none':'block';
     
-    // Sembunyikan tombol filter checkbox untuk role kegiatan
+    // Sembunyikan Checkbox Dinamis untuk role kegiatan
     if(USER.role === 'kegiatan') {
-        document.getElementById('cbIncludeWrap').style.display = 'none';
+        document.getElementById('dynamicCheckboxesContainer').style.display = 'none';
         document.getElementById('cbIncludeFOWrap').style.display = 'none';
     } else {
+        document.getElementById('dynamicCheckboxesContainer').style.display = 'flex';
         document.getElementById('cbIncludeFOWrap').style.display = 'flex';
     }
 
@@ -380,6 +380,7 @@ function loadData(){
   api('getData',function(err,res){
     if(err||!res||!res.success){toast('Gagal memuat data','err');return}
     ALL=res.data.entries||[];
+    buildDynamicCheckboxes();
     doFilter();
     renderRingkasan();
   });
@@ -441,7 +442,6 @@ function loadDendaFO() {
       document.getElementById('fo-total').textContent = fmtRp(FOTotal);
       document.getElementById('fo-total').style.color = 'var(--n900)'; 
       
-      // Update global dashboard calculations
       calcStats(ALL);
     })
     .catch(err => {
@@ -457,22 +457,77 @@ function loadSumberList(){
   api('getSumberList',function(err,res){
     if(err||!res||!res.success)return;
     SLIST=res.data||[];
+    
+    // Perbarui dropdown filter tabel
     var sel=document.getElementById('filterSumber');
+    var currSel=sel.value;
     sel.innerHTML='<option value="">Semua Sumber</option>';
     for(var i=0;i<SLIST.length;i++) sel.innerHTML+='<option value="'+esc(SLIST[i])+'">'+esc(SLIST[i])+'</option>';
+    sel.value=currSel;
+    
+    // Perbarui dropdown saat entri baru
     var ms=document.getElementById('mSumber');
+    var currMs=ms.value;
     ms.innerHTML='<option value="Dana Unit">Dana Unit</option>';
     for(var j=0;j<SLIST.length;j++) if(SLIST[j]!=='Dana Unit') ms.innerHTML+='<option value="'+esc(SLIST[j])+'">'+esc(SLIST[j])+'</option>';
+    ms.value=currMs;
+
+    buildDynamicCheckboxes();
+    doFilter();
   });
+}
+
+// === MEMBANGUN CHECKBOX DINAMIS PER KEGIATAN ===
+function buildDynamicCheckboxes() {
+  var wrap = document.getElementById('dynamicCheckboxesContainer');
+  if(!wrap) return;
+
+  // Pertahankan status centang (jika user sedang filter sesuatu)
+  var currentSelections = {};
+  var existingCbs = wrap.querySelectorAll('.dyn-cb');
+  var hadExisting = existingCbs.length > 0;
+  existingCbs.forEach(function(cb) {
+      currentSelections[cb.value] = cb.checked;
+  });
+
+  // Kumpulkan seluruh sumber dana unik
+  var map = {};
+  for(var i=0;i<SLIST.length;i++) map[SLIST[i]] = true;
+  for(var i=0;i<ALL.length;i++){
+      var s = ALL[i].sumber || 'Dana Unit';
+      map[s] = true;
+  }
+  var sources = Object.keys(map).sort();
+
+  var html = '';
+  for(var i=0;i<sources.length;i++){
+      var s = sources[i];
+      var isChecked = true;
+      
+      if (hadExisting) {
+          isChecked = currentSelections.hasOwnProperty(s) ? currentSelections[s] : false;
+      } else {
+          isChecked = (s === 'Dana Unit'); // Secara default yang dicentang hanya Dana Unit saat pertama kali dimuat
+      }
+
+      var checkedAttr = isChecked ? 'checked' : '';
+      var colorVar = (s === 'Dana Unit') ? 'var(--pri)' : 'var(--purple)';
+      var bgVar = (s === 'Dana Unit') ? 'var(--pri-ll)' : 'var(--purple-bg)';
+      var borderVar = (s === 'Dana Unit') ? 'var(--pri-l)' : 'var(--purple-l)';
+
+      html += '<label style="font-size:11px; font-weight:600; color:'+colorVar+'; display:flex; align-items:center; gap:6px; cursor:pointer; background:'+bgVar+'; padding:6px 12px; border-radius:20px; user-select:none; border: 1px solid '+borderVar+';">' +
+              '<input type="checkbox" class="dyn-cb" value="'+esc(s)+'" onchange="doFilter()" '+checkedAttr+' style="width:14px;height:14px;accent-color:'+colorVar+';cursor:pointer;">' +
+              '+ ' + esc(s) +
+              '</label>';
+  }
+  wrap.innerHTML = html;
 }
 
 // === FILTER ===
 function doFilter(){
   var q=document.getElementById('srcBox').value.toLowerCase();
   var sb=document.getElementById('filterSumber').value;
-  var cb=document.getElementById('cbIncludeSemua');
   var cbFO=document.getElementById('cbIncludeFO');
-  var onlyUnit = cb && !cb.checked; 
   var includeFO = cbFO && cbFO.checked;
   
   var f=[];
@@ -489,13 +544,26 @@ function doFilter(){
   renderTable(f);
   calcStats(f);
   
+  // Mengatur teks label judul
   var label=document.getElementById('statsLabel');
   if(sb) {
     label.textContent='— Filter: '+sb;
   } else {
     var lblArr = [];
-    if(!onlyUnit) lblArr.push('Semua Kegiatan');
-    else lblArr.push('Dana Unit');
+    var dynCbs = document.querySelectorAll('.dyn-cb');
+    var checkedNames = [];
+    dynCbs.forEach(function(cb) {
+        if (cb.checked) checkedNames.push(cb.value);
+    });
+
+    if (checkedNames.length === dynCbs.length && dynCbs.length > 0) {
+        lblArr.push('Semua Kegiatan');
+    } else if (checkedNames.length === 0) {
+        lblArr.push('Tidak Ada');
+    } else {
+        lblArr.push(checkedNames.join(', '));
+    }
+
     if(includeFO) lblArr.push('Denda FO');
     
     label.textContent= '— (' + lblArr.join(' + ') + ')';
@@ -571,22 +639,28 @@ function renderTable(entries){
   tbody.innerHTML=html;
 }
 
-// MENGHITUNG STATISTIK UTAMA (DIATUR OLEH FITUR CHECKBOX JIKA DROPDOWN="SEMUA SUMBER")
+// MENGHITUNG STATISTIK UTAMA (DIATUR OLEH FITUR CHECKBOX)
 function calcStats(entries){
   var sb = document.getElementById('filterSumber').value; // Nilai Dropdown
-  var cb = document.getElementById('cbIncludeSemua');
   var cbFO = document.getElementById('cbIncludeFO');
-  var onlyUnit = cb && !cb.checked;
   var includeFO = cbFO && cbFO.checked;
+  
+  // Baca seluruh status checkbox dinamis
+  var activeSources = {};
+  var dynCbs = document.querySelectorAll('.dyn-cb');
+  var hasDyn = dynCbs.length > 0;
+  dynCbs.forEach(function(cb) {
+      activeSources[cb.value] = cb.checked;
+  });
   
   var m=0,k=0,count=0;
   for(var i=0;i<entries.length;i++){
     var e = entries[i];
     
-    // Jika dropdown tidak memfilter spesifik (Semua), izinkan Checkbox memfilter Global Stats.
-    if (!sb) {
-        var isUnit = (!e.sumber || e.sumber === 'Dana Unit');
-        if (onlyUnit && !isUnit) continue; // Skip jika hanya diminta data "Unit"
+    // Jika dropdown tabel = Semua Sumber, maka hitungan mengikuti checkbox yang dicentang
+    if (!sb && hasDyn) {
+        var s = e.sumber || 'Dana Unit';
+        if (!activeSources[s]) continue; // Lewati jika checkbox kegiatan ini tidak dicentang
     }
 
     m+=(Number(e.uangMasuk)||0);
@@ -594,7 +668,7 @@ function calcStats(entries){
     count++;
   }
   
-  // Tambahkan akumulasi Denda FO (jika dipilih)
+  // Tambahkan akumulasi Denda FO (jika dicentang)
   if (!sb && includeFO) {
       m += FOTotal;
       count += FOCount;
@@ -696,22 +770,15 @@ function fmtRp(v){if(!v)return'Rp 0';return'Rp '+Math.round(Number(v)).toString(
 function fmtNum(v){if(!v)return'';return Math.round(Number(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 function fmtInput(el){var r=el.value.replace(/\D/g,'');if(r)el.value=Number(r).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 
-// UPDATE: Memperbaiki parser dan format tanggal yang terlalu panjang (Indochina Time)
 function fmtDate(d) {
   if(!d) return '-';
   var str = d.toString();
   
-  // Mencoba mem-parsing string secara native (Otomatis membuang timezone Indochina jika terdeteksi oleh JS)
   var dateObj = new Date(str);
-  
-  // Jika masih gagal (NaN), fallback mencoba membersihkan string manual
   if(isNaN(dateObj.getTime())) {
-      // Regex membuang tag waktu panjang di ujung
       str = str.replace(/GMT[+-]\d{4}\s*\([^)]+\)/, '').trim(); 
       dateObj = new Date(str);
   }
-  
-  // Jika gagal seutuhnya, kembalikan substring 15 karakter awal sebagai teks dasar (misal "Tue Jun 09 2026")
   if(isNaN(dateObj.getTime())) return d.toString().substring(0, 15);
   
   var mo = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
