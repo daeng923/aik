@@ -627,22 +627,41 @@ function buildDynamicCheckboxes() {
   wrap.innerHTML = html;
 }
 
-// === FILTER ===
+// === FILTER DAN KALKULASI SALDO DINAMIS SECARA KETAT ===
 function doFilter(){
   var q=document.getElementById('srcBox').value.toLowerCase();
   var sb=document.getElementById('filterSumber').value;
-  var cbFO=document.getElementById('cbIncludeFO');
-  var includeFO = cbFO && cbFO.checked;
   
   var f=[];
   for(var i=0;i<ALL.length;i++){
     var e=ALL[i];
-    if(sb&&(e.sumber||'')!==sb)continue;
+    var source = e.sumber || 'Dana Unit';
+
+    // 1. FILTER KEAMANAN: Role 'kegiatan' HANYA boleh melihat dan menghitung data kegiatannya sendiri
+    if (USER.role === 'kegiatan' && source !== USER.sumber) {
+        continue;
+    }
+
+    // 2. Filter Dropdown (Berlaku bagi Admin/Viewer)
+    if (USER.role !== 'kegiatan' && sb && source !== sb) {
+        continue;
+    }
+
+    // 3. Filter Search text
     if(q){
       var k=(e.keterangan||'').toLowerCase(),t=(e.tanggal||'').toString().toLowerCase();
       if(k.indexOf(q)<0&&t.indexOf(q)<0)continue;
     }
+
     f.push(e);
+  }
+  
+  // 4. Kalkulasi Saldo Berjalan (Running Balance) Dinamis
+  // Hal ini memastikan saldo dihitung HANYA berdasarkan baris yang lolos filter
+  var currentSaldo = 0;
+  for(var j=0; j<f.length; j++){
+      currentSaldo += (Number(f[j].uangMasuk) || 0) - (Number(f[j].uangKeluar) || 0);
+      f[j].dynamicSaldo = currentSaldo;
   }
   
   renderTable(f);
@@ -650,27 +669,36 @@ function doFilter(){
   
   // Mengatur teks label judul
   var label=document.getElementById('statsLabel');
+  var cbFO=document.getElementById('cbIncludeFO');
+  var includeFO = cbFO && cbFO.checked;
+
   if(sb) {
     label.textContent='— Filter: '+sb;
   } else {
     var lblArr = [];
     var dynCbs = document.querySelectorAll('.dyn-cb');
     var checkedNames = [];
-    dynCbs.forEach(function(cb) {
-        if (cb.checked) checkedNames.push(cb.value);
-    });
-
-    if (checkedNames.length === dynCbs.length && dynCbs.length > 0) {
-        lblArr.push('Semua Kegiatan');
-    } else if (checkedNames.length === 0) {
-        lblArr.push('Tidak Ada');
-    } else {
-        lblArr.push(checkedNames.join(', '));
-    }
-
-    if(includeFO) lblArr.push('Denda FO');
     
-    label.textContent= '— (' + lblArr.join(' + ') + ')';
+    // Baca status checked untuk penamaan judul (hanya Admin)
+    if (USER.role !== 'kegiatan') {
+        dynCbs.forEach(function(cb) {
+            if (cb.checked) checkedNames.push(cb.value);
+        });
+
+        if (checkedNames.length === dynCbs.length && dynCbs.length > 0) {
+            lblArr.push('Semua Kegiatan');
+        } else if (checkedNames.length === 0) {
+            lblArr.push('Tidak Ada');
+        } else {
+            lblArr.push(checkedNames.join(', '));
+        }
+
+        if(includeFO) lblArr.push('Denda FO');
+        
+        label.textContent= '— (' + lblArr.join(' + ') + ')';
+    } else {
+        label.textContent= '— (Filter: ' + USER.sumber + ')';
+    }
   }
 }
 
@@ -719,22 +747,26 @@ function renderTable(entries){
   var tbody=document.getElementById('tbody');
   if(!entries||entries.length===0){tbody.innerHTML='<tr><td colspan="9" class="empty">Tidak ada data transaksi</td></tr>';return}
   var html='';
-  for(var i=0;i<entries.length;i++){
+  
+  // Render dibalik agar yang terbaru (index terakhir dari f) berada di atas tabel
+  for(var i = entries.length - 1; i >= 0; i--){
     var e=entries[i];
     var s=e.sumber||'Dana Unit';
     var sc=(s==='Dana Unit')?'sb-unit':'sb-kegiatan';
     var bk=e.bukti?'<a href="'+esc(e.bukti)+'" target="_blank" class="bukti-link">&#128206; Lihat</a>':'<span style="color:var(--n300);font-size:11px">—</span>';
+    
     var canEdit=false;
     if(USER.role==='admin')canEdit=true;
     else if(USER.role==='kegiatan')canEdit=(s===USER.sumber);
     var act=canEdit?'<div class="act"><button class="a-edit" onclick="openEdit('+e.id+')">Edit</button><button class="a-del" onclick="openDel('+e.id+')">Hapus</button></div>':'<span style="color:var(--n300);font-size:11px">—</span>';
+    
     html+='<tr>'+
       '<td>'+(e.no||'-')+'</td>'+
       '<td><span style="white-space:nowrap;font-weight:600;">'+esc(fmtDate(e.tanggal))+'</span></td>'+
       '<td>'+esc(e.keterangan||'-')+'</td>'+
       '<td class="num pos">'+(e.uangMasuk?fmtRp(e.uangMasuk):'-')+'</td>'+
       '<td class="num neg">'+(e.uangKeluar?fmtRp(e.uangKeluar):'-')+'</td>'+
-      '<td class="num saldo-col">'+fmtRp(e.saldo)+'</td>'+
+      '<td class="num saldo-col">'+fmtRp(e.dynamicSaldo !== undefined ? e.dynamicSaldo : e.saldo)+'</td>'+
       '<td><span class="sumber-badge '+sc+'">'+esc(s)+'</span></td>'+
       '<td style="text-align:center">'+bk+'</td>'+
       '<td style="text-align:center">'+act+'</td>'+
@@ -743,28 +775,31 @@ function renderTable(entries){
   tbody.innerHTML=html;
 }
 
-// MENGHITUNG STATISTIK UTAMA (DIATUR OLEH FITUR CHECKBOX)
+// MENGHITUNG STATISTIK UTAMA KARTU ATAS
 function calcStats(entries){
-  var sb = document.getElementById('filterSumber').value; // Nilai Dropdown
+  var sb = document.getElementById('filterSumber').value;
   var cbFO = document.getElementById('cbIncludeFO');
-  var includeFO = cbFO && cbFO.checked;
+  var includeFO = cbFO && cbFO.checked && USER.role !== 'kegiatan'; 
   
-  // Baca seluruh status checkbox dinamis
+  // Baca seluruh status checkbox dinamis (Khusus Admin/Viewer)
   var activeSources = {};
   var dynCbs = document.querySelectorAll('.dyn-cb');
-  var hasDyn = dynCbs.length > 0;
-  dynCbs.forEach(function(cb) {
-      activeSources[cb.value] = cb.checked;
-  });
+  var hasDyn = dynCbs.length > 0 && USER.role !== 'kegiatan';
+  
+  if (hasDyn) {
+      dynCbs.forEach(function(cb) {
+          activeSources[cb.value] = cb.checked;
+      });
+  }
   
   var m=0,k=0,count=0;
   for(var i=0;i<entries.length;i++){
     var e = entries[i];
     
-    // Jika dropdown tabel = Semua Sumber, maka hitungan mengikuti checkbox yang dicentang
-    if (!sb && hasDyn) {
+    // Filter checkbox dinamis hanya berlaku bagi admin yang tidak sedang memfilter via dropdown spesifik
+    if (USER.role !== 'kegiatan' && !sb && hasDyn) {
         var s = e.sumber || 'Dana Unit';
-        if (!activeSources[s]) continue; // Lewati jika checkbox kegiatan ini tidak dicentang
+        if (!activeSources[s]) continue;
     }
 
     m+=(Number(e.uangMasuk)||0);
@@ -772,8 +807,8 @@ function calcStats(entries){
     count++;
   }
   
-  // Tambahkan akumulasi Denda FO (jika dicentang)
-  if (!sb && includeFO) {
+  // Tambahkan akumulasi Denda FO jika dicentang dan user adalah Admin
+  if (USER.role !== 'kegiatan' && !sb && includeFO) {
       m += FOTotal;
       count += FOCount;
   }
