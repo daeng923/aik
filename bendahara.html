@@ -73,6 +73,9 @@
     .rk-card .rk-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
     .rk-card .rk-name{font-size:13px;font-weight:700;color:var(--n900)}
     .rk-card .rk-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+    .rk-card.clickable{cursor:pointer;transition:transform 0.15s, box-shadow 0.15s;}
+    .rk-card.clickable:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1);}
+    
     .rk-unit .rk-badge{background:var(--pri-ll);color:var(--pri)}
     .rk-kegiatan .rk-badge{background:var(--purple-bg);color:var(--purple)}
     .rk-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px}
@@ -206,10 +209,11 @@
     <div id="dendaFOWrap" style="display:none; margin-bottom:24px;">
       <div class="section-title">Titipan Denda Sertifikat <span>(Sinkronisasi Layanan FO)</span></div>
       <div class="ringkasan-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
-        <div class="rk-card" style="border-color: #f59e0b; border-left: 4px solid #f59e0b;">
+        <!-- Tambahan .clickable dan event onclick -->
+        <div class="rk-card clickable" style="border-color: #f59e0b; border-left: 4px solid #f59e0b;" onclick="openFOHistory()">
           <div class="rk-head">
             <span class="rk-name">Dana Terkumpul FO</span>
-            <span class="rk-badge" style="background:#fffbeb;color:#d97706">Real-time Data</span>
+            <span class="rk-badge" style="background:#fffbeb;color:#d97706">Klik Riwayat Data</span>
           </div>
           <div class="rk-row"><span class="rk-label">💳 Via Transfer BNI</span><span class="rk-val" style="color:#2563eb" id="fo-tf">Memuat...</span></div>
           <div class="rk-row"><span class="rk-label">💵 Via Tunai (Cash)</span><span class="rk-val" style="color:#d97706" id="fo-cash">Memuat...</span></div>
@@ -302,10 +306,39 @@
   </div>
 </div>
 
+<!-- MODAL RIWAYAT DENDA FO -->
+<div class="overlay" id="foHistoryOverlay">
+  <div class="modal" style="max-width:700px">
+    <h3 style="display: flex; justify-content: space-between; align-items: center;">
+      Riwayat Denda Layanan FO
+      <span class="role-badge" style="background:#fffbeb;color:#d97706">DENDA_SERTIFIKAT</span>
+    </h3>
+    <div class="tbl-scroll" style="max-height: 400px; overflow-y: auto;">
+      <table id="foHistoryTable">
+        <thead>
+          <tr>
+            <th style="width: 15%;">Waktu</th>
+            <th>Civitas (NIM)</th>
+            <th class="num" style="width: 15%;">Nominal</th>
+            <th style="width: 15%;">Metode</th>
+            <th style="width: 15%;">Petugas</th>
+          </tr>
+        </thead>
+        <tbody id="foHistoryBody">
+          <!-- Riwayat akan dimuat di sini -->
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeFOHistory()">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var GAS='https://script.google.com/macros/s/AKfycbyl8VYX1J_1qp4vem11iqnjgpNf6dVcqx_6VwjbUlvnVpuvM0v2V5kW7q1vZUqzLAW5/exec';
 var TOKEN='',USER={role:'',nama:'',sumber:''},ALL=[],SLIST=[],EID=null,DID=null,ETYPE='masuk';
-var FOTotal = 0, FOCount = 0; // Globals untuk FO
+var FOTotal = 0, FOCount = 0, FODendaHistory = []; // Globals untuk FO
 
 function api(action,cb,post){
   var url=GAS+'?token='+encodeURIComponent(TOKEN)+'&action='+action;
@@ -368,7 +401,7 @@ document.getElementById('tok').addEventListener('keydown',function(e){if(e.key==
 
 function doLogout(){
   TOKEN='';USER={role:'',nama:'',sumber:''};ALL=[];SLIST=[];
-  FOTotal = 0; FOCount = 0;
+  FOTotal = 0; FOCount = 0; FODendaHistory = [];
   document.getElementById('tok').value='';
   document.getElementById('app').className='';
   document.getElementById('login').style.display='flex';
@@ -403,6 +436,7 @@ function loadDendaFO() {
       
       FOTotal = 0;
       FOCount = 0;
+      FODendaHistory = []; // Reset Riwayat
       
       if(rows.length === 0) {
         document.getElementById('fo-tf').textContent = "Rp 0";
@@ -414,6 +448,10 @@ function loadDendaFO() {
       var headerKeys = Object.keys(rows[0] || {});
       var katKey = headerKeys.find(k => k.toLowerCase().includes('kategori')) || headerKeys[3];
       var ketKey = headerKeys.find(k => k.toLowerCase().includes('ket')) || headerKeys[4];
+      var waktuKey = headerKeys.find(k => k.toLowerCase().includes('waktu') || k.toLowerCase().includes('timestamp')) || headerKeys[0];
+      var namaKey = headerKeys.find(k => k.toLowerCase().includes('nama')) || headerKeys[1];
+      var nimKey = headerKeys.find(k => k.toLowerCase().includes('nim') || k.toLowerCase().includes('id')) || headerKeys[2];
+      var petugasKey = headerKeys.find(k => k.toLowerCase().includes('petugas')) || headerKeys[5];
 
       rows.forEach(row => {
         var kategori = String(row[katKey] || '');
@@ -427,13 +465,29 @@ function loadDendaFO() {
                 nominalValue = parseInt(matchNominal[1].replace(/\./g, '')) || 0;
             }
             
+            var viaMetode = "LAINNYA";
             if (keterangan.includes('[TRANSFER BNI]') || keterangan.includes('TRANSFER')) {
                 totalTf += nominalValue;
+                viaMetode = "TRANSFER BNI";
             } else if (keterangan.includes('[CASH / TUNAI]') || keterangan.includes('CASH')) {
                 totalCash += nominalValue;
+                viaMetode = "CASH";
             }
+            
+            // Simpan Riwayat untuk Modal
+            FODendaHistory.push({
+               waktu: row[waktuKey] || '-',
+               nama: row[namaKey] || '-',
+               nim: row[nimKey] || '-',
+               nominal: nominalValue,
+               via: viaMetode,
+               petugas: row[petugasKey] || '-'
+            });
         }
       });
+      
+      // Urutkan riwayat dari yang terbaru
+      FODendaHistory.reverse();
       
       FOTotal = totalTf + totalCash;
       
@@ -451,6 +505,56 @@ function loadDendaFO() {
       document.getElementById('fo-total').textContent = 'Error koneksi FO';
       document.getElementById('fo-total').style.color = 'var(--err)';
     });
+}
+
+// === MEMBUKA MODAL RIWAYAT FO ===
+function openFOHistory() {
+  var tbody = document.getElementById('foHistoryBody');
+  if(FODendaHistory.length === 0){
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Belum ada riwayat data denda.</td></tr>';
+  } else {
+    var html = '';
+    for(var i=0; i<FODendaHistory.length; i++){
+       var h = FODendaHistory[i];
+       
+       // Format Badge Metode
+       var viaBadge = h.via;
+       if (h.via === 'TRANSFER BNI') {
+           viaBadge = '<span style="color:#2563eb;font-weight:700;font-size:10px;background:#eff6ff;padding:2px 6px;border-radius:4px;">💳 TRANSFER</span>';
+       } else if (h.via === 'CASH') {
+           viaBadge = '<span style="color:#d97706;font-weight:700;font-size:10px;background:#fffbeb;padding:2px 6px;border-radius:4px;">💵 CASH</span>';
+       }
+
+       // Format Waktu yang Rapi
+       var formattedTime = fmtDate(h.waktu);
+       if (h.waktu && h.waktu.includes('T')) {
+           // Jika format ISO
+           var dateObj = new Date(h.waktu);
+           if (!isNaN(dateObj.getTime())) {
+               var jam = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+               formattedTime += ' <br><span style="font-family:var(--mono);color:var(--n400)">' + jam + '</span>';
+           }
+       } else {
+           // Asumsi ambil dari substring keterangan aslinya
+           var matchesTime = h.waktu.match(/\d{2}:\d{2}:\d{2}/);
+           if (matchesTime) formattedTime += ' <br><span style="font-family:var(--mono);color:var(--n400)">' + matchesTime[0].substring(0, 5) + '</span>';
+       }
+
+       html += '<tr>' +
+         '<td style="font-size:11px;color:var(--n700);white-space:nowrap;">' + formattedTime + '</td>' +
+         '<td><div style="font-weight:600;font-size:13px;color:var(--n900)">' + esc(h.nama) + '</div><div style="font-size:11px;color:var(--n500);font-family:var(--mono);">' + esc(h.nim) + '</div></td>' +
+         '<td class="num" style="font-weight:700;color:var(--ok)">' + fmtRp(h.nominal) + '</td>' +
+         '<td>' + viaBadge + '</td>' +
+         '<td style="font-size:11px;color:var(--n600)">' + esc(h.petugas) + '</td>' +
+         '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+  document.getElementById('foHistoryOverlay').className = 'overlay show';
+}
+
+function closeFOHistory() {
+  document.getElementById('foHistoryOverlay').className = 'overlay';
 }
 
 function loadSumberList(){
@@ -808,9 +912,18 @@ function showErr(m){var e=document.getElementById('errBox');e.textContent=m;e.cl
 function hideErr(){document.getElementById('errBox').className='login-err'}
 function toast(m,t){var e=document.createElement('div');e.className='toast '+(t||'ok');e.textContent=m;document.body.appendChild(e);setTimeout(function(){e.remove()},3000)}
 
+// Klik diluar modal = tutup modal
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
 document.getElementById('delOverlay').addEventListener('click',function(e){if(e.target===this)closeDel()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeModal();closeDel()}});
+document.getElementById('foHistoryOverlay').addEventListener('click',function(e){if(e.target===this)closeFOHistory()});
+
+document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){
+        closeModal();
+        closeDel();
+        closeFOHistory();
+    }
+});
 </script>
 </body>
 </html>
