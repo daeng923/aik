@@ -122,13 +122,11 @@
 <body>
 
 <div class="controls">
-  <!-- Tab Navigation -->
   <div style="display:flex; gap:10px; margin-bottom:15px; border-bottom:2px solid #ddd; padding-bottom:10px;">
     <button onclick="switchTab('tab-presensi')" id="tabBtn-presensi" style="background:#007bff; padding:8px 15px; font-weight:bold;">📋 Presensi</button>
     <button onclick="switchTab('tab-laporan')" id="tabBtn-laporan" style="background:#f0f0f0; color:#333; padding:8px 15px;">📊 Laporan</button>
   </div>
 
-  <!-- Tab 1: Presensi -->
   <div id="tab-presensi" class="tab-content" style="display:block;">
     <strong>Pilih Kelompok (Kolom F):</strong>
     <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
@@ -142,11 +140,11 @@
     <br><br>
     <button onclick="render()" id="btnRender" disabled>Tampilkan</button>
     <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrint" disabled>Cetak Presensi</button>
+    <button onclick="printAllPresensi()" style="background: #198754; color: white; margin-left: 10px;" id="btnPrintAll" disabled>🖨️ Cetak Semua Kelompok</button>
     <button onclick="openImportDialog()" style="background: #ff9800; margin-left: 10px;">📥 Import Data</button>
     <button onclick="openMoodleModal()" style="background: #800080; color: white; margin-left: 10px;">📤 Export Moodle</button>
   </div>
 
-  <!-- Tab 2: Laporan -->
   <div id="tab-laporan" class="tab-content" style="display:none;">
     <strong>Filter Laporan:</strong>
     <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
@@ -160,10 +158,10 @@
     <button onclick="openTanggalPertemuanModal()" style="background:#6c59c6; margin-right:10px;">📅 Set Tanggal Pertemuan</button>
     <button onclick="renderLaporan()" id="btnRenderLaporan" disabled style="background:#17a2b8;">Tampilkan Laporan</button>
     <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrintLaporan" disabled>Cetak Laporan</button>
+    <button onclick="printAllLaporan()" style="background: #198754; color: white; margin-left: 10px;" id="btnPrintAllLaporan" disabled>🖨️ Cetak Semua Laporan</button>
   </div>
 </div>
 
-<!-- Modal Import -->
 <div id="importModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
   <div style="background:white; padding:20px; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto;">
     <h2 style="margin-top:0;">Import Data Peserta</h2>
@@ -205,7 +203,6 @@
   </div>
 </div>
 
-<!-- Modal Export Moodle -->
 <div id="moodleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
   <div style="background:white; padding:20px; border-radius:8px; max-width:450px; width:90%;">
     <h2 style="margin-top:0;">Export CSV Moodle</h2>
@@ -220,7 +217,6 @@
       <p style="font-size:8pt; color:#666; margin:5px 0 0 0;">Harus sesuai dengan <i>shortname</i> course di Moodle.</p>
     </div>
 
-    <!-- OPSI TAMBAHAN UNTUK MEMBUAT AKUN -->
     <div style="margin-bottom:20px; background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px;">
       <label style="display:flex; align-items:flex-start; cursor:pointer;">
         <input type="checkbox" id="moodleCreateAccount" style="margin-top:3px; margin-right:8px;" checked>
@@ -242,7 +238,6 @@
 <div id="errorMsg"></div>
 <div id="output"></div>
 
-<!-- Success Modal -->
 <div id="successModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2001; align-items:center; justify-content:center;">
   <div style="background:white; padding:30px; border-radius:8px; text-align:center; min-width:350px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
     <div style="font-size:50px; margin-bottom:15px;">✓</div>
@@ -252,7 +247,6 @@
   </div>
 </div>
 
-<!-- Modal Tanggal Pertemuan -->
 <div id="tanggalPertemuanModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; overflow-y:auto;">
   <div style="background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; margin:20px auto;">
     <h2 style="margin-top:0;">Set Tanggal Pertemuan</h2>
@@ -299,7 +293,6 @@
   </div>
 </div>
 
-<!-- Loading Overlay -->
 <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center;">
   <div style="background:white; padding:30px; border-radius:8px; text-align:center; min-width:300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
     <h3 style="margin-top:0; color:#333;">Memproses Data...</h3>
@@ -364,9 +357,12 @@ function loadData() {
       processData(data.data);
       populateDropdown();
       status.textContent = "✓ Data berhasil dimuat";
+      
+      // Enable buttons
       document.getElementById("kelompok").disabled = false;
       document.getElementById("btnRender").disabled = false;
       document.getElementById("btnPrint").disabled = false;
+      document.getElementById("btnPrintAll").disabled = false;
     })
     .catch(err => {
       console.error(err);
@@ -461,6 +457,7 @@ function populateLaporanDropdown() {
     select.value = kelompokList[0];
     document.getElementById("btnRenderLaporan").disabled = false;
     document.getElementById("btnPrintLaporan").disabled = false;
+    document.getElementById("btnPrintAllLaporan").disabled = false;
   }
 }
 
@@ -469,10 +466,8 @@ function showError(msg) {
   errorDiv.innerHTML = "<div class='error'>" + msg + "</div>";
 }
 
-function render() {
-  var k = document.getElementById("kelompok").value;
-  if (!k || !dataKelompok[k]) return;
-  
+// Helper: Generate HTML Presensi untuk 1 Kelompok
+function generatePresensiHTML(k) {
   var obj = dataKelompok[k];
   var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(obj.link);
 
@@ -535,8 +530,34 @@ function render() {
   html += "</div>";
 
   html += "</div>";
+  return html;
+}
 
-  document.getElementById("output").innerHTML = html;
+function render() {
+  var k = document.getElementById("kelompok").value;
+  if (!k || !dataKelompok[k]) return;
+  document.getElementById("output").innerHTML = generatePresensiHTML(k);
+}
+
+// FITUR BARU: CETAK SEMUA PRESENSI
+function printAllPresensi() {
+  if (kelompokList.length === 0) return;
+  var status = document.getElementById("loadingStatus");
+  status.textContent = "Menyiapkan data cetak seluruh kelompok...";
+  
+  let fullHtml = "";
+  kelompokList.forEach(k => {
+    fullHtml += generatePresensiHTML(k);
+  });
+  
+  document.getElementById("output").innerHTML = fullHtml;
+  
+  // Beri sedikit jeda agar DOM ter-render sebelum memanggil window.print
+  setTimeout(() => {
+    status.textContent = "✓ Data berhasil dimuat";
+    window.print();
+    render(); // Mengembalikan tampilan output ke mode single / satu kelompok saja
+  }, 800);
 }
 
 // Import Dialog Functions
@@ -938,16 +959,12 @@ function generateDummyPresensi(nim) {
       const sisaPertunjukan = 14 - i;
       const sisaHadir = target - hitung;
       
-      // Jika sisa hadir == sisa pertemuan, wajib hadir
-      // Jika sisa hadir == 0, wajib absen
-      // Jika tidak, random
       if (sisaHadir === sisaPertunjukan) {
         presensi[i] = true;
         hitung++;
       } else if (sisaHadir === 0) {
         presensi[i] = false;
       } else {
-        // Random dengan proportional chance
         const chance = sisaHadir / sisaPertunjukan;
         presensi[i] = Math.random() < chance;
         if (presensi[i]) hitung++;
@@ -963,39 +980,28 @@ function generateDummyPresensi(nim) {
   return laporanData[nim];
 }
 
-// Hitung rank untuk setiap pertemuan (logic dari Excel RANK)
+// Hitung rank untuk setiap pertemuan
 function getPresenceStatus(nim, pertemuan, threshold) {
   const presensiData = generateDummyPresensi(nim);
-  
-  // Hitung total hadir sampai pertemuan ini
   let totalHadir = 0;
   for (let i = 0; i < pertemuan; i++) {
     if (presensiData[i]) totalHadir++;
   }
-  
-  // Hitung rank berdasarkan pertemuan (simpel: yang hadir lebih banyak rank lebih tinggi)
-  // Jika hadir >= threshold, tampil ✅, jika tidak ❌
   return totalHadir >= threshold ? '✅' : '❌';
 }
 
-// Render Laporan
-function renderLaporan() {
-  const k = document.getElementById("kelompokLaporan").value;
-  if (!k || !dataKelompok[k]) return;
-  
+// Helper: Generate HTML Laporan untuk 1 Kelompok
+function generateLaporanHTML(k) {
   const obj = dataKelompok[k];
   const peserta = obj.data;
   
   // Get current date and time
   const now = new Date();
-  const tanggal = now.toLocaleDateString('id-ID', { 
-    year: 'numeric', 
-    month: '2-digit', 
-    day: '2-digit' 
-  });
+  const tanggal = now.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   
-  let html = '<div class="laporan-container">';
+  // Style page-break-after: always untuk memastikan tiap kelompok mulai di kertas baru
+  let html = '<div class="laporan-container" style="page-break-after: always;">';
   
   // Header Sederhana
   html += '<h2 style="text-align:center; margin:0 0 3px 0; font-size:12pt;">LAPORAN PRESENSI KELOMPOK PEMBELAJARAN AL-QUR\'AN</h2>';
@@ -1054,8 +1060,31 @@ function renderLaporan() {
   html += '</div>';
   
   html += '</div>';
+  return html;
+}
+
+// Render Laporan Single
+function renderLaporan() {
+  const k = document.getElementById("kelompokLaporan").value;
+  if (!k || !dataKelompok[k]) return;
+  document.getElementById("output").innerHTML = generateLaporanHTML(k);
+}
+
+// FITUR BARU: CETAK SEMUA LAPORAN
+function printAllLaporan() {
+  if (kelompokList.length === 0) return;
   
-  document.getElementById("output").innerHTML = html;
+  let fullHtml = "";
+  kelompokList.forEach(k => {
+    fullHtml += generateLaporanHTML(k);
+  });
+  
+  document.getElementById("output").innerHTML = fullHtml;
+  
+  setTimeout(() => {
+    window.print();
+    renderLaporan(); // Mengembalikan tampilan output ke mode single
+  }, 800);
 }
 
 // --- FUNGSI EXPORT MOODLE CSV ---
@@ -1088,56 +1117,45 @@ function generateMoodleCSV() {
   const csvRows = [];
   
   if (includeProfile) {
-    // Header Lengkap (Bisa trigger create user)
     csvRows.push(["username", "firstname", "lastname", "email", "password", "course1", "group1", "role1"]);
   } else {
-    // Header Enrolment Saja
     csvRows.push(["username", "course1", "group1", "role1"]);
   }
 
-  // Looping ke semua kelompok untuk menyusun datanya
   for (const kelompok in dataKelompok) {
     const info = dataKelompok[kelompok];
     
-    // 1. Masukkan baris untuk Instruktur (jika kodenya ada)
     if (info.kode_instruktur && info.kode_instruktur.trim() !== "") {
       if (includeProfile) {
-        // Pecah nama menjadi firstname dan lastname (Moodle butuh lastname)
         let parts = info.instruktur.trim().split(" ");
         let fname = parts[0] || info.kode_instruktur;
-        let lname = parts.slice(1).join(" ") || "-"; // pakai "-" jika nama cuma 1 kata
-        let email = info.kode_instruktur + "@umm.ac.id"; // contoh format email dosen
-        
-        // Sengaja kosongkan password instruktur, agar jika mereka sudah ada, tidak ter-reset
+        let lname = parts.slice(1).join(" ") || "-";
+        let email = info.kode_instruktur + "@umm.ac.id";
         csvRows.push([info.kode_instruktur, fname, lname, email, "", course1, kelompok, "teacher"]);
       } else {
         csvRows.push([info.kode_instruktur, course1, kelompok, "teacher"]);
       }
     }
 
-    // 2. Masukkan baris untuk seluruh Mahasiswa di kelompok ini
     info.data.forEach(mhs => {
       if (mhs.nim && mhs.nim.trim() !== "") {
         if (includeProfile) {
-          // Pecah nama menjadi firstname dan lastname
           let parts = mhs.nama.trim().split(" ");
           let fname = parts[0] || mhs.nim;
-          let lname = parts.slice(1).join(" ") || "-"; // pakai "-" jika nama cuma 1 kata
-          let email = mhs.nim + "@webmail.umm.ac.id"; // email format webmail UMM
-          let password = mhs.nim; // password menggunakan NIM
-          
+          let lname = parts.slice(1).join(" ") || "-";
+          let email = mhs.nim + "@webmail.umm.ac.id";
+          let password = mhs.nim;
           csvRows.push([mhs.nim, fname, lname, email, password, course1, kelompok, "student"]);
         } else {
           csvRows.push([mhs.nim, course1, kelompok, "student"]);
         }
       }
     });
-  } // <--- INI KURUNG KURAWAL YANG TERTINGGAL SEBELUMNYA
+  } 
 
   // Convert array ke format string CSV
   let csvContent = "data:text/csv;charset=utf-8,";
   csvRows.forEach(rowArray => {
-    // Escape string dengan petik agar spasi/koma di nama kelompok aman
     let row = rowArray.map(cell => {
       const escaped = String(cell).replace(/"/g, '""');
       return `"${escaped}"`;
@@ -1145,7 +1163,6 @@ function generateMoodleCSV() {
     csvContent += row + "\r\n";
   });
 
-  // Eksekusi Download File
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
@@ -1154,7 +1171,6 @@ function generateMoodleCSV() {
   link.click();
   document.body.removeChild(link);
   
-  // Tutup Modal
   closeMoodleModal();
 }
 
