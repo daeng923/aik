@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buku Besar Keuangan MKWK</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <script>if(window.top!==window.self){document.documentElement.style.display='none';try{window.top.location=window.self.location}catch(e){}}</script>
+  <script src="xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -305,7 +309,7 @@
     <div class="field">
       <label>Link Bukti (Google Drive) <span style="font-weight:400;color:var(--n400)">— wajib untuk pengeluaran besar</span></label>
       <input type="url" id="mBukti" placeholder="https://drive.google.com/...">
-      <div class="hint">Paste link file dari Google Drive sebagai bukti transaksi</div>
+      <div class="hint">Paste link file Google Drive (wajib diawali https://) sebagai bukti transaksi</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
@@ -410,17 +414,35 @@ var IMP = []; // baris hasil parsing file impor
 var BULAN_ID=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 function api(action,cb,post){
-  var url=GAS+'?token='+encodeURIComponent(TOKEN)+'&action='+action;
+  // Semua request via POST; token di body (tidak muncul di URL/log/riwayat)
+  var body=JSON.stringify(Object.assign({},post||{},{token:TOKEN}));
   var x=new XMLHttpRequest();
-  if(post){x.open('POST',url,true);x.setRequestHeader('Content-Type','text/plain')}
-  else{x.open('GET',url,true)}
+  x.open('POST',GAS+'?action='+encodeURIComponent(action),true);
+  x.setRequestHeader('Content-Type','text/plain');
+  x.timeout=30000;
   x.onload=function(){
-    if(x.status===200){try{cb(null,JSON.parse(x.responseText))}catch(e){cb('Parse error',null)}}
-    else cb('HTTP '+x.status,null);
+    if(x.status===200){
+      try{
+        var r=JSON.parse(x.responseText);
+        if(r&&r.success===false&&/unauthorized/i.test(String(r.error||''))&&TOKEN){doLogout();showErr('Sesi tidak valid, silakan masuk lagi');return}
+        cb(null,r)
+      }catch(e){cb('Parse error',null)}
+    }else cb('HTTP '+x.status,null);
   };
   x.onerror=function(){cb('Network error',null)};
-  x.send(post?JSON.stringify(post):null);
+  x.ontimeout=function(){cb('Timeout',null)};
+  x.send(body);
 }
+
+// === KEAMANAN SESI: auto-logout idle ===
+var IDLE_MS=15*60*1000,IDLE_T=null,POLL_T=null;
+function resetIdle(){
+  if(!TOKEN)return;
+  clearTimeout(IDLE_T);
+  IDLE_T=setTimeout(function(){doLogout();showErr('Anda keluar otomatis karena tidak aktif 15 menit')},IDLE_MS);
+}
+['click','keydown','mousemove','touchstart','scroll'].forEach(function(ev){document.addEventListener(ev,resetIdle,{passive:true})});
+function safeUrl(u){u=String(u||'').trim();return /^https:\/\/[^\s"'<>]+$/i.test(u)?u:''}
 
 // === LOGIN ===
 function doLogin(){
@@ -466,12 +488,14 @@ function doLogin(){
     if(USER.role !== 'kegiatan') {
       loadDendaFO();
     }
-    setInterval(loadData,5*60*1000);
+    clearInterval(POLL_T);POLL_T=setInterval(loadData,5*60*1000);resetIdle();
   });
 }
 document.getElementById('tok').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
 
 function doLogout(){
+  clearInterval(POLL_T);clearTimeout(IDLE_T);
+  document.querySelectorAll('tbody').forEach(function(t){t.innerHTML=''});
   TOKEN='';USER={role:'',nama:'',sumber:'',buktiBatas:0};ALL=[];SLIST=[];IMP=[];
   FOTotal = 0; FOCount = 0; FODendaHistory = [];
   document.getElementById('tok').value='';
@@ -495,7 +519,8 @@ function loadData(){
 function loadDendaFO() {
   var gasFO = 'https://script.google.com/macros/s/AKfycbxg6zydADMX7cE474QFe5pH0W0S5vVOSVxbfnIemUfr7mT5k6kDxDMaX4MCVxAx1UR5/exec';
 
-  fetch(gasFO, { method: 'GET', redirect: 'follow' })
+  // CATATAN: endpoint FO ini belum memakai token; sebaiknya diamankan di sisi GAS FO.
+  fetch(gasFO, { method: 'GET', redirect: 'follow', credentials: 'omit', referrerPolicy: 'no-referrer' })
     .then(res => res.json())
     .then(data => {
       if(!data || !data.success || !data.rows) {
@@ -590,7 +615,7 @@ function openFOHistory() {
        var h = FODendaHistory[i];
 
        // Format Badge Metode
-       var viaBadge = h.via;
+       var viaBadge = esc(h.via);
        if (h.via === 'TRANSFER BNI') {
            viaBadge = '<span style="color:#2563eb;font-weight:700;font-size:10px;background:#eff6ff;padding:2px 6px;border-radius:4px;">💳 TRANSFER</span>';
        } else if (h.via === 'CASH') {
@@ -598,7 +623,7 @@ function openFOHistory() {
        }
 
        // Format Waktu yang Rapi
-       var formattedTime = fmtDate(h.waktu);
+       var formattedTime = esc(fmtDate(h.waktu));
        if (h.waktu && h.waktu.includes('T')) {
            // Jika format ISO
            var dateObj = new Date(h.waktu);
@@ -608,7 +633,7 @@ function openFOHistory() {
            }
        } else {
            // Asumsi ambil dari substring keterangan aslinya
-           var matchesTime = h.waktu.match(/\d{2}:\d{2}:\d{2}/);
+           var matchesTime = String(h.waktu||'').match(/\d{2}:\d{2}:\d{2}/);
            if (matchesTime) formattedTime += ' <br><span style="font-family:var(--mono);color:var(--n400)">' + matchesTime[0].substring(0, 5) + '</span>';
        }
 
@@ -824,12 +849,12 @@ function renderTable(entries){
     var e=entries[i];
     var s=e.sumber||'Dana Unit';
     var sc=(s==='Dana Unit')?'sb-unit':'sb-kegiatan';
-    var bk=e.bukti?'<a href="'+esc(e.bukti)+'" target="_blank" class="bukti-link">&#128206; Lihat</a>':'<span style="color:var(--n300);font-size:11px">—</span>';
+    var su=safeUrl(e.bukti);var bk=su?'<a href="'+esc(su)+'" target="_blank" rel="noopener noreferrer" class="bukti-link">&#128206; Lihat</a>':(e.bukti?'<span style="color:var(--err,#dc2626);font-size:11px">link tidak valid</span>':'<span style="color:var(--n300);font-size:11px">—</span>');
 
     var canEdit=false;
     if(USER.role==='admin')canEdit=true;
     else if(USER.role==='kegiatan')canEdit=(s===USER.sumber);
-    var act=canEdit?'<div class="act"><button class="a-edit" onclick="openEdit('+e.id+')">Edit</button><button class="a-del" onclick="openDel('+e.id+')">Batalkan</button></div>':'<span style="color:var(--n300);font-size:11px">—</span>';
+    var act=canEdit?'<div class="act"><button class="a-edit" onclick="openEdit('+Number(e.id)+')">Edit</button><button class="a-del" onclick="openDel('+Number(e.id)+')">Batalkan</button></div>':'<span style="color:var(--n300);font-size:11px">—</span>';
 
     html+='<tr>'+
       '<td>'+(e.no||'-')+'</td>'+
@@ -936,6 +961,7 @@ function saveEntry(){
   if(!tgl){toast('Tanggal harus diisi','err');return}
   if(!ket){toast('Keterangan harus diisi','err');return}
   if(nom<=0){toast('Nominal harus lebih dari 0','err');return}
+  if(bukti&&!safeUrl(bukti)){toast('Link bukti harus diawali https://','err');return}
   var parts=tgl.split('-');
   var tglF=parseInt(parts[2])+' '+BULAN_ID[parseInt(parts[1])-1]+' '+parts[0];
   var p={tanggal:tglF,keterangan:ket,uangMasuk:ETYPE==='masuk'?nom:0,uangKeluar:ETYPE==='keluar'?nom:0,bukti:bukti,sumber:sumber};
@@ -1162,12 +1188,13 @@ function parseImport(aoa){
     }
     row.masuk=m;row.keluar=x;
     row.bukti=String(cB>=0?r[cB]:'').trim();
+    if(row.bukti&&!safeUrl(row.bukti))row.errs.push('Link bukti harus diawali https://');
 
     var sRaw=String(cS>=0?r[cS]:'').trim();
     if(USER.role==='kegiatan'){row.sumber=USER.sumber}
     else if(!sRaw){row.sumber='Dana Unit'}
     else if(sumberMap[sRaw.toLowerCase()]){row.sumber=sumberMap[sRaw.toLowerCase()]}
-    else{row.sumber=sRaw;row.warn='Sumber baru'}
+    else{row.sumber=sRaw.replace(/[<>"'`&\\]/g,'').slice(0,60)||'Dana Unit';row.warn='Sumber baru'}
 
     if(iso&&!row.errs.length){
       var kk=iso+'|'+ketRaw.toLowerCase()+'|'+m+'|'+x+'|'+row.sumber.toLowerCase();
@@ -1289,7 +1316,7 @@ function parseDate(str){
   return todayStr();
 }
 function findE(id){for(var i=0;i<ALL.length;i++)if(ALL[i].id===id)return ALL[i];return null}
-function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function esc(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function showErr(m){var e=document.getElementById('errBox');e.textContent=m;e.className='login-err show'}
 function hideErr(){document.getElementById('errBox').className='login-err'}
 function toast(m,t){var e=document.createElement('div');e.className='toast '+(t||'ok');e.textContent=m;document.body.appendChild(e);setTimeout(function(){e.remove()},3000)}
