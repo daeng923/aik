@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buku Besar Keuangan MKWK</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -52,6 +53,7 @@
     .role-admin{background:var(--pri-l);color:var(--pri)}
     .role-kegiatan{background:var(--purple-l);color:var(--purple)}
     .role-viewer{background:var(--n200);color:var(--n600)}
+    .role-bendahara{background:var(--ok-l);color:var(--ok)}
     .btn-out{padding:6px 14px;background:var(--n700);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500}
     .btn-out:hover{background:var(--n900)}
 
@@ -75,7 +77,7 @@
     .rk-card .rk-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
     .rk-card.clickable{cursor:pointer;transition:transform 0.15s, box-shadow 0.15s;}
     .rk-card.clickable:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1);}
-    
+
     .rk-unit .rk-badge{background:var(--pri-ll);color:var(--pri)}
     .rk-kegiatan .rk-badge{background:var(--purple-bg);color:var(--purple)}
     .rk-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px}
@@ -133,6 +135,24 @@
     .confirm-body{font-size:14px;color:var(--n600);line-height:1.7;margin-bottom:8px}
     .confirm-body strong{color:var(--n900)}
 
+    /* IMPOR EXCEL */
+    .imp-step{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:var(--n50);border:1px solid var(--n200);border-radius:8px;margin-bottom:10px;font-size:13px;color:var(--n700)}
+    .imp-step b{color:var(--pri)}
+    .imp-opt{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0;font-size:12px;color:var(--n700)}
+    .imp-opt label{display:flex;align-items:center;gap:6px;cursor:pointer}
+    .imp-msg{display:none;margin:10px 0;padding:10px 12px;border-radius:6px;font-size:13px;line-height:1.5}
+    .imp-msg.show{display:block}
+    .imp-msg.err{background:var(--err-bg);border-left:3px solid var(--err);color:#991b1b}
+    .imp-msg.info{background:var(--pri-ll);border-left:3px solid var(--pri);color:var(--pri-d)}
+    .imp-sum{font-size:13px;margin:8px 0;padding:10px 12px;background:var(--n50);border-radius:6px;line-height:1.7}
+    .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+    .tag-ok{background:var(--ok-l);color:var(--ok)}
+    .tag-err{background:var(--err-l);color:var(--err)}
+    .tag-dup{background:var(--n200);color:var(--n600)}
+    .tag-warn{background:var(--warn-l);color:var(--warn)}
+    #impTable{min-width:760px}
+    #impTable td{font-size:12px}
+
     .toast{position:fixed;bottom:24px;right:24px;padding:12px 16px;color:#fff;border-radius:6px;font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:200;animation:slideIn .3s}
     .toast.ok{background:var(--ok)}.toast.err{background:var(--err)}
     @keyframes slideIn{from{transform:translateX(300px);opacity:0}to{transform:translateX(0);opacity:1}}
@@ -187,7 +207,7 @@
       <div style="display:flex; align-items:center; gap:8px; margin-bottom: 8px;">
         Ringkasan Keseluruhan <span id="statsLabel" style="color:var(--pri);font-weight:700;"></span>
       </div>
-      <!-- FITUR BARU: MULTI-CHECKBOX DINAMIS (MEMILIH SUMBER PEMASUKAN) -->
+      <!-- MULTI-CHECKBOX DINAMIS (MEMILIH SUMBER PEMASUKAN) -->
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <div id="dynamicCheckboxesContainer" style="display:flex; gap:10px; flex-wrap:wrap;">
           <!-- Checkbox per kegiatan akan digenerate otomatis di sini -->
@@ -209,7 +229,6 @@
     <div id="dendaFOWrap" style="display:none; margin-bottom:24px;">
       <div class="section-title">Titipan Denda Sertifikat <span>(Sinkronisasi Layanan FO)</span></div>
       <div class="ringkasan-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
-        <!-- Tambahan .clickable dan event onclick -->
         <div class="rk-card clickable" style="border-color: #f59e0b; border-left: 4px solid #f59e0b;" onclick="openFOHistory()">
           <div class="rk-head">
             <span class="rk-name">Dana Terkumpul FO</span>
@@ -238,6 +257,7 @@
           <select class="filter-sumber" id="filterSumber" onchange="doFilter()">
             <option value="">Semua Sumber</option>
           </select>
+          <button class="btn btn-ghost btn-sm" id="btnImport" onclick="openImport()">⬆ Impor Excel</button>
           <button class="btn btn-ok btn-sm" id="btnAdd" onclick="openAdd()">+ Tambah Transaksi</button>
         </div>
       </div>
@@ -283,7 +303,7 @@
       <div class="hint">Pilih sumber dana untuk transaksi ini</div>
     </div>
     <div class="field">
-      <label>Link Bukti (Google Drive) <span style="font-weight:400;color:var(--n400)">— opsional</span></label>
+      <label>Link Bukti (Google Drive) <span style="font-weight:400;color:var(--n400)">— wajib untuk pengeluaran besar</span></label>
       <input type="url" id="mBukti" placeholder="https://drive.google.com/...">
       <div class="hint">Paste link file dari Google Drive sebagai bukti transaksi</div>
     </div>
@@ -294,14 +314,61 @@
   </div>
 </div>
 
-<!-- MODAL DELETE -->
+<!-- MODAL BATALKAN (SOFT DELETE) -->
 <div class="overlay" id="delOverlay">
   <div class="modal" style="max-width:420px">
-    <h3>Hapus Transaksi</h3>
-    <div class="confirm-body">Apakah Anda yakin ingin menghapus transaksi:<br><strong id="delInfo"></strong><br><br>Saldo akan dihitung ulang otomatis. Tindakan ini tidak bisa dibatalkan.</div>
+    <h3>Batalkan Transaksi</h3>
+    <div class="confirm-body">Apakah Anda yakin ingin membatalkan transaksi:<br><strong id="delInfo"></strong><br><br>Transaksi akan ditandai <strong>Batal</strong>, tidak ditampilkan lagi, dan tercatat di log. Saldo dihitung ulang otomatis.</div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeDel()">Batal</button>
-      <button class="btn btn-err" id="btnDel" onclick="doDel()">Hapus</button>
+      <button class="btn btn-ghost" onclick="closeDel()">Kembali</button>
+      <button class="btn btn-err" id="btnDel" onclick="doDel()">Batalkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPOR EXCEL -->
+<div class="overlay" id="impOverlay">
+  <div class="modal" style="max-width:920px">
+    <h3>Impor Transaksi dari Excel</h3>
+
+    <div class="imp-step">
+      <b>1.</b> Unduh template, isi mulai baris ke-2 (hapus baris contoh).
+      <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Unduh Template</button>
+    </div>
+    <div class="imp-step">
+      <b>2.</b> Pilih file yang sudah diisi (.xlsx / .csv):
+      <input type="file" id="impFile" accept=".xlsx,.xls,.csv" onchange="handleImportFile(this)">
+    </div>
+
+    <div class="imp-msg" id="impMsg"></div>
+
+    <div id="impPreviewWrap" style="display:none">
+      <div class="imp-opt">
+        <label><input type="checkbox" id="impIncDup" onchange="renderImport()"> Sertakan baris yang tampak sudah ada (duplikat)</label>
+        <label id="impSkipWrap" style="display:none"><input type="checkbox" id="impSkipBukti" onchange="renderImport()"> Data arsip lama: lewati kewajiban link bukti (khusus admin, tercatat di log)</label>
+      </div>
+      <div class="imp-sum" id="impSum"></div>
+      <div class="tbl-scroll" style="max-height:340px;overflow-y:auto;border:1px solid var(--n200);border-radius:6px">
+        <table id="impTable">
+          <thead>
+            <tr>
+              <th style="width:6%">Baris</th>
+              <th style="width:12%">Tanggal</th>
+              <th>Keterangan</th>
+              <th class="num" style="width:11%">Masuk</th>
+              <th class="num" style="width:11%">Keluar</th>
+              <th style="width:12%">Sumber</th>
+              <th style="width:22%">Status</th>
+            </tr>
+          </thead>
+          <tbody id="impBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImport()">Tutup</button>
+      <button class="btn btn-pri" id="btnImpGo" onclick="doImport()" style="width:auto" disabled>Impor</button>
     </div>
   </div>
 </div>
@@ -337,8 +404,10 @@
 
 <script>
 var GAS='https://script.google.com/macros/s/AKfycbyl8VYX1J_1qp4vem11iqnjgpNf6dVcqx_6VwjbUlvnVpuvM0v2V5kW7q1vZUqzLAW5/exec';
-var TOKEN='',USER={role:'',nama:'',sumber:''},ALL=[],SLIST=[],EID=null,DID=null,ETYPE='masuk';
+var TOKEN='',USER={role:'',nama:'',sumber:'',buktiBatas:0},ALL=[],SLIST=[],EID=null,DID=null,ETYPE='masuk';
 var FOTotal = 0, FOCount = 0, FODendaHistory = []; // Globals untuk FO
+var IMP = []; // baris hasil parsing file impor
+var BULAN_ID=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 function api(action,cb,post){
   var url=GAS+'?token='+encodeURIComponent(TOKEN)+'&action='+action;
@@ -364,17 +433,20 @@ function doLogin(){
     btn.disabled=false;btn.textContent='Masuk';
     if(err||!res||!res.success){showErr(err?'Koneksi gagal: '+err:'Token tidak valid');TOKEN='';return}
     USER.role=res.data.role||'viewer';USER.nama=res.data.nama||'User';USER.sumber=res.data.sumber||'Semua';
+    USER.buktiBatas=Number(res.data.buktiBatas)||0;
     document.getElementById('userName').textContent=USER.nama;
     var b=document.getElementById('roleBadge');
-    b.textContent=USER.role==='admin'?'Admin':USER.role==='kegiatan'?'Kegiatan':'Viewer';
+    b.textContent=USER.role==='admin'?'Admin':USER.role==='bendahara'?'Bendahara':USER.role==='kegiatan'?'Kegiatan':'Viewer';
     b.className='role-badge role-'+USER.role;
     document.getElementById('btnAdd').style.display=(USER.role==='viewer')?'none':'';
+    document.getElementById('btnImport').style.display=(USER.role==='viewer')?'none':'';
+    document.getElementById('impSkipWrap').style.display=(USER.role==='admin')?'flex':'none';
     document.getElementById('fieldSumber').style.display=(USER.role==='kegiatan')?'none':'';
     document.getElementById('filterSumber').style.display=(USER.role==='kegiatan')?'none':'';
-    
+
     // Tampilkan Widget Denda FO hanya untuk Admin
     document.getElementById('dendaFOWrap').style.display=(USER.role==='kegiatan')?'none':'block';
-    
+
     // Sembunyikan Checkbox Dinamis untuk role kegiatan
     if(USER.role === 'kegiatan') {
         document.getElementById('dynamicCheckboxesContainer').style.display = 'none';
@@ -388,7 +460,7 @@ function doLogin(){
     document.getElementById('login').style.display='none';
     document.getElementById('app').className='active';
     toast('Selamat datang, '+USER.nama,'ok');
-    
+
     loadData();
     loadSumberList();
     if(USER.role !== 'kegiatan') {
@@ -400,7 +472,7 @@ function doLogin(){
 document.getElementById('tok').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
 
 function doLogout(){
-  TOKEN='';USER={role:'',nama:'',sumber:''};ALL=[];SLIST=[];
+  TOKEN='';USER={role:'',nama:'',sumber:'',buktiBatas:0};ALL=[];SLIST=[];IMP=[];
   FOTotal = 0; FOCount = 0; FODendaHistory = [];
   document.getElementById('tok').value='';
   document.getElementById('app').className='';
@@ -422,22 +494,22 @@ function loadData(){
 // === LOAD DATA DENDA FO (DARI GAS FO) ===
 function loadDendaFO() {
   var gasFO = 'https://script.google.com/macros/s/AKfycbxg6zydADMX7cE474QFe5pH0W0S5vVOSVxbfnIemUfr7mT5k6kDxDMaX4MCVxAx1UR5/exec';
-  
+
   fetch(gasFO, { method: 'GET', redirect: 'follow' })
     .then(res => res.json())
     .then(data => {
       if(!data || !data.success || !data.rows) {
         throw new Error("Data FO tidak valid/gagal diproses");
       }
-      
+
       var rows = data.rows;
       var totalTf = 0;
       var totalCash = 0;
-      
+
       FOTotal = 0;
       FOCount = 0;
       FODendaHistory = []; // Reset Riwayat
-      
+
       if(rows.length === 0) {
         document.getElementById('fo-tf').textContent = "Rp 0";
         document.getElementById('fo-cash').textContent = "Rp 0";
@@ -464,7 +536,7 @@ function loadDendaFO() {
             if (matchNominal) {
                 nominalValue = parseInt(matchNominal[1].replace(/\./g, '')) || 0;
             }
-            
+
             var viaMetode = "LAINNYA";
             if (keterangan.includes('[TRANSFER BNI]') || keterangan.includes('TRANSFER')) {
                 totalTf += nominalValue;
@@ -473,7 +545,7 @@ function loadDendaFO() {
                 totalCash += nominalValue;
                 viaMetode = "CASH";
             }
-            
+
             // Simpan Riwayat untuk Modal
             FODendaHistory.push({
                waktu: row[waktuKey] || '-',
@@ -485,17 +557,17 @@ function loadDendaFO() {
             });
         }
       });
-      
+
       // Urutkan riwayat dari yang terbaru
       FODendaHistory.reverse();
-      
+
       FOTotal = totalTf + totalCash;
-      
+
       document.getElementById('fo-tf').textContent = fmtRp(totalTf);
       document.getElementById('fo-cash').textContent = fmtRp(totalCash);
       document.getElementById('fo-total').textContent = fmtRp(FOTotal);
-      document.getElementById('fo-total').style.color = 'var(--n900)'; 
-      
+      document.getElementById('fo-total').style.color = 'var(--n900)';
+
       calcStats(ALL);
     })
     .catch(err => {
@@ -516,7 +588,7 @@ function openFOHistory() {
     var html = '';
     for(var i=0; i<FODendaHistory.length; i++){
        var h = FODendaHistory[i];
-       
+
        // Format Badge Metode
        var viaBadge = h.via;
        if (h.via === 'TRANSFER BNI') {
@@ -561,14 +633,14 @@ function loadSumberList(){
   api('getSumberList',function(err,res){
     if(err||!res||!res.success)return;
     SLIST=res.data||[];
-    
+
     // Perbarui dropdown filter tabel
     var sel=document.getElementById('filterSumber');
     var currSel=sel.value;
     sel.innerHTML='<option value="">Semua Sumber</option>';
     for(var i=0;i<SLIST.length;i++) sel.innerHTML+='<option value="'+esc(SLIST[i])+'">'+esc(SLIST[i])+'</option>';
     sel.value=currSel;
-    
+
     // Perbarui dropdown saat entri baru
     var ms=document.getElementById('mSumber');
     var currMs=ms.value;
@@ -607,7 +679,7 @@ function buildDynamicCheckboxes() {
   for(var i=0;i<sources.length;i++){
       var s = sources[i];
       var isChecked = true;
-      
+
       if (hadExisting) {
           isChecked = currentSelections.hasOwnProperty(s) ? currentSelections[s] : false;
       } else {
@@ -631,7 +703,7 @@ function buildDynamicCheckboxes() {
 function doFilter(){
   var q=document.getElementById('srcBox').value.toLowerCase();
   var sb=document.getElementById('filterSumber').value;
-  
+
   var f=[];
   for(var i=0;i<ALL.length;i++){
     var e=ALL[i];
@@ -655,18 +727,17 @@ function doFilter(){
 
     f.push(e);
   }
-  
+
   // 4. Kalkulasi Saldo Berjalan (Running Balance) Dinamis
-  // Hal ini memastikan saldo dihitung HANYA berdasarkan baris yang lolos filter
   var currentSaldo = 0;
   for(var j=0; j<f.length; j++){
       currentSaldo += (Number(f[j].uangMasuk) || 0) - (Number(f[j].uangKeluar) || 0);
       f[j].dynamicSaldo = currentSaldo;
   }
-  
+
   renderTable(f);
   calcStats(f);
-  
+
   // Mengatur teks label judul
   var label=document.getElementById('statsLabel');
   var cbFO=document.getElementById('cbIncludeFO');
@@ -678,7 +749,7 @@ function doFilter(){
     var lblArr = [];
     var dynCbs = document.querySelectorAll('.dyn-cb');
     var checkedNames = [];
-    
+
     // Baca status checked untuk penamaan judul (hanya Admin)
     if (USER.role !== 'kegiatan') {
         dynCbs.forEach(function(cb) {
@@ -694,7 +765,7 @@ function doFilter(){
         }
 
         if(includeFO) lblArr.push('Denda FO');
-        
+
         label.textContent= '— (' + lblArr.join(' + ') + ')';
     } else {
         label.textContent= '— (Filter: ' + USER.sumber + ')';
@@ -713,11 +784,11 @@ function renderRingkasan(){
     map[s].keluar+=(Number(e.uangKeluar)||0);
     map[s].count++;
   }
-  
+
   var grid=document.getElementById('ringkasanGrid');
   var html='';
   var keys=Object.keys(map).sort();
-  
+
   for(var j=0;j<keys.length;j++){
     var name=keys[j];
     var d=map[name];
@@ -725,7 +796,7 @@ function renderRingkasan(){
     var isUnit=(name==='Dana Unit');
     var cls=isUnit?'rk-unit':'rk-kegiatan';
     var badgeLabel=isUnit?'Unit':'Kegiatan';
-    
+
     html+='<div class="rk-card '+cls+'">'+
       '<div class="rk-head">'+
         '<span class="rk-name">'+esc(name)+'</span>'+
@@ -738,7 +809,7 @@ function renderRingkasan(){
       '<div class="rk-row trx"><span class="rk-label">Transaksi</span><span class="rk-val">'+d.count+' entri</span></div>'+
     '</div>';
   }
-  
+
   grid.innerHTML=html||'<div style="color:var(--n400);font-size:13px">Belum ada data</div>';
 }
 
@@ -747,19 +818,19 @@ function renderTable(entries){
   var tbody=document.getElementById('tbody');
   if(!entries||entries.length===0){tbody.innerHTML='<tr><td colspan="9" class="empty">Tidak ada data transaksi</td></tr>';return}
   var html='';
-  
+
   // Render dibalik agar yang terbaru (index terakhir dari f) berada di atas tabel
   for(var i = entries.length - 1; i >= 0; i--){
     var e=entries[i];
     var s=e.sumber||'Dana Unit';
     var sc=(s==='Dana Unit')?'sb-unit':'sb-kegiatan';
     var bk=e.bukti?'<a href="'+esc(e.bukti)+'" target="_blank" class="bukti-link">&#128206; Lihat</a>':'<span style="color:var(--n300);font-size:11px">—</span>';
-    
+
     var canEdit=false;
     if(USER.role==='admin')canEdit=true;
     else if(USER.role==='kegiatan')canEdit=(s===USER.sumber);
-    var act=canEdit?'<div class="act"><button class="a-edit" onclick="openEdit('+e.id+')">Edit</button><button class="a-del" onclick="openDel('+e.id+')">Hapus</button></div>':'<span style="color:var(--n300);font-size:11px">—</span>';
-    
+    var act=canEdit?'<div class="act"><button class="a-edit" onclick="openEdit('+e.id+')">Edit</button><button class="a-del" onclick="openDel('+e.id+')">Batalkan</button></div>':'<span style="color:var(--n300);font-size:11px">—</span>';
+
     html+='<tr>'+
       '<td>'+(e.no||'-')+'</td>'+
       '<td><span style="white-space:nowrap;font-weight:600;">'+esc(fmtDate(e.tanggal))+'</span></td>'+
@@ -779,23 +850,23 @@ function renderTable(entries){
 function calcStats(entries){
   var sb = document.getElementById('filterSumber').value;
   var cbFO = document.getElementById('cbIncludeFO');
-  var includeFO = cbFO && cbFO.checked && USER.role !== 'kegiatan'; 
-  
+  var includeFO = cbFO && cbFO.checked && USER.role !== 'kegiatan';
+
   // Baca seluruh status checkbox dinamis (Khusus Admin/Viewer)
   var activeSources = {};
   var dynCbs = document.querySelectorAll('.dyn-cb');
   var hasDyn = dynCbs.length > 0 && USER.role !== 'kegiatan';
-  
+
   if (hasDyn) {
       dynCbs.forEach(function(cb) {
           activeSources[cb.value] = cb.checked;
       });
   }
-  
+
   var m=0,k=0,count=0;
   for(var i=0;i<entries.length;i++){
     var e = entries[i];
-    
+
     // Filter checkbox dinamis hanya berlaku bagi admin yang tidak sedang memfilter via dropdown spesifik
     if (USER.role !== 'kegiatan' && !sb && hasDyn) {
         var s = e.sumber || 'Dana Unit';
@@ -806,15 +877,15 @@ function calcStats(entries){
     k+=(Number(e.uangKeluar)||0);
     count++;
   }
-  
+
   // Tambahkan akumulasi Denda FO jika dicentang dan user adalah Admin
   if (USER.role !== 'kegiatan' && !sb && includeFO) {
       m += FOTotal;
       count += FOCount;
   }
-  
+
   var saldo = m - k;
-  
+
   document.getElementById('sMasuk').textContent=fmtRp(m);
   document.getElementById('sKeluar').textContent=fmtRp(k);
   document.getElementById('sSaldo').textContent=fmtRp(saldo);
@@ -866,8 +937,7 @@ function saveEntry(){
   if(!ket){toast('Keterangan harus diisi','err');return}
   if(nom<=0){toast('Nominal harus lebih dari 0','err');return}
   var parts=tgl.split('-');
-  var mo=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  var tglF=parseInt(parts[2])+' '+mo[parseInt(parts[1])-1]+' '+parts[0];
+  var tglF=parseInt(parts[2])+' '+BULAN_ID[parseInt(parts[1])-1]+' '+parts[0];
   var p={tanggal:tglF,keterangan:ket,uangMasuk:ETYPE==='masuk'?nom:0,uangKeluar:ETYPE==='keluar'?nom:0,bukti:bukti,sumber:sumber};
   var btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='Menyimpan...';
   if(EID){
@@ -886,7 +956,7 @@ function saveEntry(){
   }
 }
 
-// === DELETE ===
+// === BATALKAN (SOFT DELETE) ===
 function openDel(id){
   var e=findE(id);if(!e)return;DID=id;
   var info='#'+e.no+' — '+e.keterangan;if(e.sumber)info+=' ['+e.sumber+']';
@@ -896,12 +966,289 @@ function openDel(id){
 function closeDel(){document.getElementById('delOverlay').className='overlay';DID=null}
 function doDel(){
   if(!DID)return;
-  var btn=document.getElementById('btnDel');btn.disabled=true;btn.textContent='Menghapus...';
+  var btn=document.getElementById('btnDel');btn.disabled=true;btn.textContent='Membatalkan...';
   api('deleteEntry',function(err,res){
-    btn.disabled=false;btn.textContent='Hapus';
+    btn.disabled=false;btn.textContent='Batalkan';
     if(err||!res||!res.success){toast('Gagal: '+(res?res.error:err),'err');return}
-    toast('Transaksi berhasil dihapus','ok');closeDel();loadData();
+    toast('Transaksi berhasil dibatalkan','ok');closeDel();loadData();
   },{id:DID});
+}
+
+// === IMPOR EXCEL / CSV ===
+function downloadTemplate(){
+  if(typeof XLSX==='undefined'){toast('Library Excel belum termuat, cek koneksi internet','err');return}
+  var sumberContoh=(USER.role==='kegiatan')?USER.sumber:'Dana Unit';
+  var data=[
+    ['Tanggal','Keterangan','Pemasukan','Pengeluaran','Sumber','Link Bukti'],
+    ['2026-10-15','Contoh: denda pengambilan sertifikat',50000,'',sumberContoh,''],
+    ['2026-10-16','Contoh: pembelian ATK kantor','',75000,sumberContoh,'https://drive.google.com/...']
+  ];
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:14},{wch:42},{wch:14},{wch:14},{wch:24},{wch:44}];
+
+  var info=[
+    ['PETUNJUK PENGISIAN'],
+    [''],
+    ['1. Isi data di sheet "Data" mulai baris ke-2. Hapus dua baris contoh (yang diawali "Contoh:") atau biarkan, baris contoh otomatis diabaikan.'],
+    ['2. Tanggal: gunakan format 2026-10-15 atau 15/10/2026 atau 15 Oktober 2026.'],
+    ['3. Isi SALAH SATU: Pemasukan ATAU Pengeluaran per baris. Tulis angka saja (contoh 150000), tanpa "Rp".'],
+    ['4. Sumber: nama sumber dana (contoh: Dana Unit, SLQ Remidi). Kosong = Dana Unit. Pengguna role kegiatan otomatis memakai sumbernya sendiri.'],
+    ['5. Link Bukti: link Google Drive. Wajib untuk pengeluaran mulai batas yang ditetapkan admin.'],
+    ['6. Jangan mengubah judul kolom. Maksimal 500 baris per impor.'],
+    ['7. Setelah diunggah, aplikasi menampilkan pratinjau. Jika ada baris bermasalah, perbaiki file lalu unggah ulang. Tidak ada data yang tersimpan sebelum Anda menekan tombol Impor.']
+  ];
+  var wsInfo=XLSX.utils.aoa_to_sheet(info);
+  wsInfo['!cols']=[{wch:130}];
+
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Data');
+  XLSX.utils.book_append_sheet(wb,wsInfo,'Petunjuk');
+  XLSX.writeFile(wb,'Template_Impor_Buku_Besar.xlsx');
+}
+
+function openImport(){
+  IMP=[];
+  document.getElementById('impFile').value='';
+  document.getElementById('impPreviewWrap').style.display='none';
+  document.getElementById('impIncDup').checked=false;
+  document.getElementById('impSkipBukti').checked=false;
+  document.getElementById('btnImpGo').disabled=true;
+  document.getElementById('btnImpGo').textContent='Impor';
+  impMsg('','');
+  document.getElementById('impOverlay').className='overlay show';
+}
+function closeImport(){document.getElementById('impOverlay').className='overlay';IMP=[]}
+
+function impMsg(text,type){
+  var el=document.getElementById('impMsg');
+  if(!text){el.className='imp-msg';el.innerHTML='';return}
+  el.className='imp-msg show '+type;
+  el.innerHTML=text;
+}
+
+function pad2(n){return ('0'+n).slice(-2)}
+
+function impMonthIdx(s){
+  var m={jan:0,feb:1,mar:2,apr:3,mei:4,may:4,jun:5,jul:6,agu:7,ags:7,aug:7,sep:8,okt:9,oct:9,nov:10,des:11,dec:11};
+  var k=String(s).toLowerCase().substring(0,3);
+  return m.hasOwnProperty(k)?m[k]:-1;
+}
+
+// Mengembalikan 'YYYY-MM-DD' atau null
+function parseTgl(v){
+  if(v===''||v===null||v===undefined)return null;
+  var y,m,d,mt;
+  if(typeof v==='number'){
+    if(v<20000||v>80000)return null;
+    var dt=new Date(Math.round((v-25569)*86400000));
+    y=dt.getUTCFullYear();m=dt.getUTCMonth()+1;d=dt.getUTCDate();
+  }else{
+    var s=String(v).trim();
+    mt=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+    if(mt){y=+mt[1];m=+mt[2];d=+mt[3]}
+    else{
+      mt=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+      if(mt){d=+mt[1];m=+mt[2];y=+mt[3]}
+      else{
+        mt=s.match(/^(\d{1,2})\s+([A-Za-z]+)\.?\s+(\d{4})$/);
+        if(!mt)return null;
+        var mi=impMonthIdx(mt[2]);
+        if(mi<0)return null;
+        d=+mt[1];m=mi+1;y=+mt[3];
+      }
+    }
+  }
+  if(m<1||m>12||d<1||d>31||y<2000||y>2100)return null;
+  var chk=new Date(Date.UTC(y,m-1,d));
+  if(chk.getUTCMonth()!==m-1)return null;
+  return y+'-'+pad2(m)+'-'+pad2(d);
+}
+
+// Mengembalikan angka (0 jika kosong) atau NaN jika tidak valid
+function parseNominal(v){
+  if(v===''||v===null||v===undefined)return 0;
+  if(typeof v==='number')return Math.round(v);
+  var s=String(v).replace(/rp/ig,'').replace(/\s/g,'');
+  if(!s)return 0;
+  if(/^-?\d+$/.test(s))return Number(s);
+  if(s.indexOf('.')>=0&&s.indexOf(',')>=0){
+    if(s.lastIndexOf(',')>s.lastIndexOf('.'))s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  }else if(s.indexOf('.')>=0){
+    if(/^-?\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+  }else if(s.indexOf(',')>=0){
+    if(/^-?\d{1,3}(,\d{3})+$/.test(s))s=s.replace(/,/g,'');
+    else s=s.replace(',','.');
+  }
+  var n=Number(s);
+  return isNaN(n)?NaN:Math.round(n);
+}
+
+function handleImportFile(inp){
+  var f=inp.files&&inp.files[0];
+  if(!f)return;
+  if(typeof XLSX==='undefined'){impMsg('Library Excel belum termuat. Cek koneksi internet lalu muat ulang halaman.','err');return}
+  impMsg('','');
+  var rd=new FileReader();
+  rd.onload=function(ev){
+    var aoa;
+    try{
+      var wb=XLSX.read(ev.target.result,{type:'array'});
+      var name=(wb.SheetNames.indexOf('Data')>=0)?'Data':wb.SheetNames[0];
+      aoa=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:''});
+    }catch(e){
+      impMsg('File tidak bisa dibaca. Gunakan template (.xlsx) atau file .csv.','err');return;
+    }
+    parseImport(aoa);
+  };
+  rd.readAsArrayBuffer(f);
+}
+
+function parseImport(aoa){
+  IMP=[];
+  var hi=-1,i;
+  for(i=0;i<Math.min(aoa.length,6);i++){
+    var low=aoa[i].map(function(c){return String(c).toLowerCase().trim()});
+    if(low.some(function(c){return c.indexOf('tanggal')===0})){hi=i;break}
+  }
+  if(hi<0){impMsg('Kolom "Tanggal" tidak ditemukan. Gunakan template yang disediakan, jangan ubah judul kolom.','err');document.getElementById('impPreviewWrap').style.display='none';document.getElementById('btnImpGo').disabled=true;return}
+  var h=aoa[hi].map(function(c){return String(c).toLowerCase().trim()});
+  function col(keys){
+    for(var k=0;k<h.length;k++)for(var j=0;j<keys.length;j++)if(h[k].indexOf(keys[j])===0)return k;
+    return -1;
+  }
+  var cT=col(['tanggal']),cK=col(['keterangan','uraian']),cM=col(['pemasukan','uang masuk','masuk']),cX=col(['pengeluaran','uang keluar','keluar']),cS=col(['sumber']),cB=col(['link bukti','bukti']);
+  if(cK<0||(cM<0&&cX<0)){impMsg('Kolom wajib tidak lengkap. Perlu: Tanggal, Keterangan, Pemasukan, Pengeluaran. Gunakan template yang disediakan.','err');document.getElementById('impPreviewWrap').style.display='none';document.getElementById('btnImpGo').disabled=true;return}
+
+  // daftar sumber yang sudah ada (tidak peka huruf besar/kecil)
+  var sumberMap={};
+  for(i=0;i<SLIST.length;i++)sumberMap[SLIST[i].toLowerCase()]=SLIST[i];
+  for(i=0;i<ALL.length;i++){var sn=ALL[i].sumber||'Dana Unit';sumberMap[sn.toLowerCase()]=sn}
+  sumberMap['dana unit']='Dana Unit';
+
+  // kunci data yang sudah ada, untuk mendeteksi duplikat
+  var existing={};
+  for(i=0;i<ALL.length;i++){
+    var en=ALL[i];
+    var k0=parseDate(en.tanggal)+'|'+String(en.keterangan||'').trim().toLowerCase()+'|'+(Number(en.uangMasuk)||0)+'|'+(Number(en.uangKeluar)||0)+'|'+String(en.sumber||'Dana Unit').toLowerCase();
+    existing[k0]=true;
+  }
+
+  var skippedContoh=0;
+  for(i=hi+1;i<aoa.length;i++){
+    var r=aoa[i];
+    var empty=true;
+    for(var c=0;c<r.length;c++){if(String(r[c]).trim()!==''){empty=false;break}}
+    if(empty)continue;
+
+    var ketRaw=String(cK>=0?r[cK]:'').trim();
+    if(/^contoh\s*:/i.test(ketRaw)){skippedContoh++;continue}
+
+    var row={n:i+1,errs:[],warn:'',dup:false};
+    var iso=parseTgl(cT>=0?r[cT]:'');
+    if(!iso){row.errs.push('Tanggal tidak dikenali')}
+    row.iso=iso;
+    if(iso){var pp=iso.split('-');row.tanggalF=parseInt(pp[2])+' '+BULAN_ID[parseInt(pp[1])-1]+' '+pp[0]}
+    else{row.tanggalF=String(cT>=0?r[cT]:'')}
+    row.ket=ketRaw;
+    if(!ketRaw)row.errs.push('Keterangan kosong');
+
+    var m=cM>=0?parseNominal(r[cM]):0,x=cX>=0?parseNominal(r[cX]):0;
+    if(isNaN(m)||isNaN(x)){row.errs.push('Nominal tidak valid');m=isNaN(m)?0:m;x=isNaN(x)?0:x}
+    else{
+      if(m<0||x<0)row.errs.push('Nominal tidak boleh negatif');
+      else if(m===0&&x===0)row.errs.push('Isi pemasukan atau pengeluaran');
+      else if(m>0&&x>0)row.errs.push('Isi salah satu saja');
+    }
+    row.masuk=m;row.keluar=x;
+    row.bukti=String(cB>=0?r[cB]:'').trim();
+
+    var sRaw=String(cS>=0?r[cS]:'').trim();
+    if(USER.role==='kegiatan'){row.sumber=USER.sumber}
+    else if(!sRaw){row.sumber='Dana Unit'}
+    else if(sumberMap[sRaw.toLowerCase()]){row.sumber=sumberMap[sRaw.toLowerCase()]}
+    else{row.sumber=sRaw;row.warn='Sumber baru'}
+
+    if(iso&&!row.errs.length){
+      var kk=iso+'|'+ketRaw.toLowerCase()+'|'+m+'|'+x+'|'+row.sumber.toLowerCase();
+      if(existing[kk])row.dup=true;
+    }
+    IMP.push(row);
+  }
+
+  if(!IMP.length){impMsg('Tidak ada baris data yang bisa dibaca'+(skippedContoh?' (baris contoh diabaikan)':'')+'.','err');document.getElementById('impPreviewWrap').style.display='none';document.getElementById('btnImpGo').disabled=true;return}
+  if(IMP.length>500){impMsg('File berisi '+IMP.length+' baris. Maksimal 500 baris per impor, silakan pecah filenya.','err');IMP=[];document.getElementById('impPreviewWrap').style.display='none';document.getElementById('btnImpGo').disabled=true;return}
+  if(skippedContoh)impMsg(skippedContoh+' baris contoh diabaikan.','info');
+  document.getElementById('impPreviewWrap').style.display='block';
+  renderImport();
+}
+
+function renderImport(){
+  var skipB=(USER.role==='admin')&&document.getElementById('impSkipBukti').checked;
+  var incDup=document.getElementById('impIncDup').checked;
+  var th=USER.buktiBatas||0;
+  var nOk=0,nErr=0,nDup=0,totM=0,totK=0,html='';
+
+  IMP.forEach(function(r){
+    var errs=r.errs.slice();
+    if(!skipB&&th>0&&r.keluar>0&&r.keluar>=th&&!r.bukti)errs.push('Pengeluaran ≥ '+fmtRp(th)+' wajib ada link bukti');
+    r.include=false;
+    var tag;
+    if(errs.length){
+      nErr++;
+      tag='<span class="tag tag-err">'+esc(errs.join('; '))+'</span>';
+    }else if(r.dup&&!incDup){
+      nDup++;
+      tag='<span class="tag tag-dup">Sudah ada, dilewati</span>';
+    }else{
+      nOk++;r.include=true;totM+=r.masuk;totK+=r.keluar;
+      tag='<span class="tag tag-ok">Siap</span>';
+      if(r.dup)tag+=' <span class="tag tag-warn">Duplikat disertakan</span>';
+      if(r.warn)tag+=' <span class="tag tag-warn">'+esc(r.warn)+'</span>';
+    }
+    html+='<tr>'+
+      '<td>'+r.n+'</td>'+
+      '<td style="white-space:nowrap">'+esc(r.tanggalF||'-')+'</td>'+
+      '<td>'+esc(r.ket||'-')+'</td>'+
+      '<td class="num pos">'+(r.masuk?fmtRp(r.masuk):'-')+'</td>'+
+      '<td class="num neg">'+(r.keluar?fmtRp(r.keluar):'-')+'</td>'+
+      '<td>'+esc(r.sumber||'-')+'</td>'+
+      '<td>'+tag+'</td>'+
+    '</tr>';
+  });
+
+  document.getElementById('impBody').innerHTML=html;
+  var sum='Total terbaca: <strong>'+IMP.length+'</strong> baris. Siap diimpor: <strong style="color:var(--ok)">'+nOk+'</strong>'+
+    (nDup?' · Dilewati (sudah ada): <strong>'+nDup+'</strong>':'')+
+    (nErr?' · Bermasalah: <strong style="color:var(--err)">'+nErr+'</strong>':'')+
+    '<br>Pemasukan: <strong>'+fmtRp(totM)+'</strong> · Pengeluaran: <strong>'+fmtRp(totK)+'</strong> · Selisih: <strong>'+fmtRp(totM-totK)+'</strong>';
+  if(nErr)sum+='<br><span style="color:var(--err)">Perbaiki baris bermasalah di file Excel, lalu unggah ulang. Impor hanya berjalan jika semua baris valid.</span>';
+  document.getElementById('impSum').innerHTML=sum;
+
+  var go=document.getElementById('btnImpGo');
+  go.disabled=(nErr>0||nOk===0);
+  go.textContent=nOk>0?('Impor '+nOk+' Transaksi'):'Impor';
+}
+
+function doImport(){
+  var rows=IMP.filter(function(r){return r.include}).map(function(r){
+    return {tanggal:r.tanggalF,keterangan:r.ket,uangMasuk:r.masuk,uangKeluar:r.keluar,bukti:r.bukti,sumber:r.sumber};
+  });
+  if(!rows.length)return;
+  var btn=document.getElementById('btnImpGo');
+  btn.disabled=true;btn.textContent='Mengimpor...';
+  var p={rows:rows,lewatiBukti:(USER.role==='admin')&&document.getElementById('impSkipBukti').checked};
+  api('importEntries',function(err,res){
+    if(err||!res||!res.success){
+      var msg='Gagal: '+esc(res?res.error:err);
+      if(res&&res.details&&res.details.length)msg+='<br>'+res.details.map(esc).join('<br>');
+      impMsg(msg,'err');
+      btn.disabled=false;btn.textContent='Impor '+rows.length+' Transaksi';
+      return;
+    }
+    toast(res.message||'Impor berhasil','ok');
+    closeImport();loadData();loadSumberList();
+  },p);
 }
 
 // === HELPERS ===
@@ -912,31 +1259,31 @@ function fmtInput(el){var r=el.value.replace(/\D/g,'');if(r)el.value=Number(r).t
 function fmtDate(d) {
   if(!d) return '-';
   var str = d.toString();
-  
+
   var dateObj = new Date(str);
   if(isNaN(dateObj.getTime())) {
-      str = str.replace(/GMT[+-]\d{4}\s*\([^)]+\)/, '').trim(); 
+      str = str.replace(/GMT[+-]\d{4}\s*\([^)]+\)/, '').trim();
       dateObj = new Date(str);
   }
   if(isNaN(dateObj.getTime())) return d.toString().substring(0, 15);
-  
+
   var mo = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
   var day = ('0' + dateObj.getDate()).slice(-2);
   var month = mo[dateObj.getMonth()];
   var year = dateObj.getFullYear();
-  
+
   return day + ' ' + month + ' ' + year;
 }
 
 function todayStr(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
 function parseDate(str){
   if(!str)return todayStr();
-  
+
   var cleanStr = str.toString().replace(/GMT[+-]\d{4}\s*\([^)]+\)/, '').trim();
   var m={'Januari':'01','Februari':'02','Maret':'03','April':'04','Mei':'05','Juni':'06','Juli':'07','Agustus':'08','September':'09','Oktober':'10','November':'11','Desember':'12'};
   var p=cleanStr.trim().split(' ');
   if(p.length===3&&m[p[1]])return p[2]+'-'+m[p[1]]+'-'+('0'+parseInt(p[0])).slice(-2);
-  
+
   var d=new Date(cleanStr);
   if(!isNaN(d.getTime()))return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
   return todayStr();
@@ -950,12 +1297,14 @@ function toast(m,t){var e=document.createElement('div');e.className='toast '+(t|
 // Klik diluar modal = tutup modal
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
 document.getElementById('delOverlay').addEventListener('click',function(e){if(e.target===this)closeDel()});
+document.getElementById('impOverlay').addEventListener('click',function(e){if(e.target===this)closeImport()});
 document.getElementById('foHistoryOverlay').addEventListener('click',function(e){if(e.target===this)closeFOHistory()});
 
 document.addEventListener('keydown',function(e){
     if(e.key==='Escape'){
         closeModal();
         closeDel();
+        closeImport();
         closeFOHistory();
     }
 });
