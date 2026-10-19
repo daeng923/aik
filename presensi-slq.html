@@ -141,7 +141,9 @@
     <button onclick="render()" id="btnRender" disabled>Tampilkan</button>
     <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrint" disabled>Cetak Presensi</button>
     <button onclick="printAllPresensi()" style="background: #198754; color: white; margin-left: 10px;" id="btnPrintAll" disabled>🖨️ Cetak Semua Kelompok</button>
-    <button onclick="openKolomModal()" style="background: #0d9488; color: white; margin-left: 10px;">➕ Kolom Tambahan</button>
+    <button onclick="tambahKolom()" style="background: #0d9488; color: white; margin-left: 10px;">➕ Tambah Kolom</button>
+    <button onclick="hapusKolom()" style="background: #d32f2f; color: white; margin-left: 5px;">➖ Hapus Kolom</button>
+    <span id="infoKolom" style="margin-left:8px; font-size:9pt; color:#666;"></span>
     <button onclick="openImportDialog()" style="background: #ff9800; margin-left: 10px;">📥 Import Data</button>
     <button onclick="openMoodleModal()" style="background: #800080; color: white; margin-left: 10px;">📤 Export Moodle</button>
   </div>
@@ -236,36 +238,6 @@
   </div>
 </div>
 
-<div id="kolomModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
-  <div style="background:white; padding:20px; border-radius:8px; max-width:480px; width:90%; max-height:85vh; overflow-y:auto;">
-    <h2 style="margin-top:0;">Kolom Tambahan Presensi</h2>
-
-    <div style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px; font-size:9pt;">
-      Kolom tambahan muncul di sebelah kanan 14 kolom pertemuan pada tabel presensi (tampilan &amp; cetak, semua kelompok).
-    </div>
-
-    <div style="display:flex; gap:8px; margin-bottom:10px; align-items:flex-end;">
-      <div style="flex:1;">
-        <label style="display:block; font-weight:bold; margin-bottom:4px; font-size:9pt;">Nama Kolom:</label>
-        <input type="text" id="kolomNamaInput" placeholder="contoh: Ket." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-      </div>
-      <div style="width:90px;">
-        <label style="display:block; font-weight:bold; margin-bottom:4px; font-size:9pt;">Lebar (px):</label>
-        <input type="number" id="kolomLebarInput" value="60" min="20" max="400" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-      </div>
-      <button onclick="tambahKolom()" style="background:#0d9488; padding:8px 12px;">Tambah</button>
-    </div>
-
-    <div id="kolomError" style="display:none; color:#d32f2f; background:#ffebee; padding:8px; border-radius:4px; margin-bottom:10px; font-size:9pt;"></div>
-
-    <div id="kolomList" style="margin-bottom:15px;"></div>
-
-    <div style="display:flex; gap:10px; justify-content:flex-end;">
-      <button onclick="closeKolomModal()" style="background:#0d9488;">Selesai</button>
-    </div>
-  </div>
-</div>
-
 <div id="errorMsg"></div>
 <div id="output"></div>
 
@@ -349,40 +321,30 @@ var currentLaporanIndex = 0; // Index untuk laporan tab
 var laporanData = {}; // Store data dummy presensi
 var pertemuanDates = {}; // Store tanggal pertemuan per kelompok
 var GAS_DEPLOYMENT_ID = ""; // akan diisi dari GAS
-var extraKolom = []; // Kolom tambahan presensi: [{nama, lebar}]
+// --- KOLOM PERTEMUAN TAMBAHAN (lanjut otomatis: 15, 16, ...) ---
+var JUMLAH_DEFAULT = 14;
+var JUMLAH_MAX = 40;
+var jumlahPertemuan = JUMLAH_DEFAULT;
 
-// --- KOLOM TAMBAHAN PRESENSI ---
-function escHtml(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function loadExtraKolom() {
+function loadJumlahKolom() {
   try {
-    var saved = localStorage.getItem("presensi_extra_kolom");
-    if (saved) {
-      var arr = JSON.parse(saved);
-      if (Array.isArray(arr)) extraKolom = arr;
-    }
-  } catch (e) { extraKolom = []; }
-}
-
-function saveExtraKolom() {
-  try {
-    localStorage.setItem("presensi_extra_kolom", JSON.stringify(extraKolom));
+    var v = parseInt(localStorage.getItem("presensi_jumlah_kolom"), 10);
+    if (!isNaN(v) && v >= JUMLAH_DEFAULT && v <= JUMLAH_MAX) jumlahPertemuan = v;
   } catch (e) {}
+  updateInfoKolom();
 }
 
-function openKolomModal() {
-  document.getElementById("kolomModal").style.display = "flex";
-  document.getElementById("kolomError").style.display = "none";
-  document.getElementById("kolomNamaInput").value = "";
-  document.getElementById("kolomLebarInput").value = "60";
-  renderKolomList();
+function saveJumlahKolom() {
+  try { localStorage.setItem("presensi_jumlah_kolom", String(jumlahPertemuan)); } catch (e) {}
 }
 
-function closeKolomModal() {
-  document.getElementById("kolomModal").style.display = "none";
-  // Segarkan tampilan jika presensi sedang ditampilkan
+function updateInfoKolom() {
+  var el = document.getElementById("infoKolom");
+  if (el) el.textContent = "Kolom: " + jumlahPertemuan;
+}
+
+function refreshPresensiView() {
+  updateInfoKolom();
   var out = document.getElementById("output");
   if (out.querySelector(".print-container")) {
     var k = document.getElementById("kelompok").value;
@@ -390,49 +352,24 @@ function closeKolomModal() {
   }
 }
 
-function renderKolomList() {
-  var box = document.getElementById("kolomList");
-  if (extraKolom.length === 0) {
-    box.innerHTML = "<p style='color:#999; font-size:9pt; margin:0;'>Belum ada kolom tambahan.</p>";
-    return;
-  }
-  var h = "";
-  extraKolom.forEach(function(c, i) {
-    h += "<div style='display:flex; align-items:center; gap:8px; padding:6px 8px; border:1px solid #ddd; border-radius:4px; margin-bottom:6px;'>";
-    h += "<span style='flex:1;'><strong>" + escHtml(c.nama) + "</strong> <span style='color:#666; font-size:9pt;'>(" + c.lebar + " px)</span></span>";
-    h += "<button onclick='hapusKolom(" + i + ")' style='background:#d32f2f; padding:4px 10px; font-size:9pt;'>Hapus</button>";
-    h += "</div>";
-  });
-  box.innerHTML = h;
-}
-
 function tambahKolom() {
-  var nama = document.getElementById("kolomNamaInput").value.trim();
-  var lebar = parseInt(document.getElementById("kolomLebarInput").value, 10);
-  var err = document.getElementById("kolomError");
-  err.style.display = "none";
-
-  if (!nama) {
-    err.textContent = "Nama kolom tidak boleh kosong";
-    err.style.display = "block";
+  if (jumlahPertemuan >= JUMLAH_MAX) {
+    alert("Maksimal " + JUMLAH_MAX + " kolom.");
     return;
   }
-  if (isNaN(lebar) || lebar < 20 || lebar > 400) {
-    err.textContent = "Lebar kolom harus antara 20 - 400 px";
-    err.style.display = "block";
-    return;
-  }
-
-  extraKolom.push({ nama: nama, lebar: lebar });
-  saveExtraKolom();
-  document.getElementById("kolomNamaInput").value = "";
-  renderKolomList();
+  jumlahPertemuan++;
+  saveJumlahKolom();
+  refreshPresensiView();
 }
 
-function hapusKolom(i) {
-  extraKolom.splice(i, 1);
-  saveExtraKolom();
-  renderKolomList();
+function hapusKolom() {
+  if (jumlahPertemuan <= JUMLAH_DEFAULT) {
+    alert("Kolom bawaan (1-" + JUMLAH_DEFAULT + ") tidak bisa dihapus.");
+    return;
+  }
+  jumlahPertemuan--;
+  saveJumlahKolom();
+  refreshPresensiView();
 }
 
 // Fungsi hitung hari kerja (Senin-Jumat)
@@ -611,18 +548,14 @@ function generatePresensiHTML(k) {
   html += "<th class='col-nim' rowspan='2'>NIM</th>";
   html += "<th class='col-nama' rowspan='2'>Nama Mahasiswa</th>";
   
-  for (var i = 1; i <= 14; i++) {
+  for (var i = 1; i <= jumlahPertemuan; i++) {
     html += "<th class='col-presensi' style='border-bottom: none;'>" + i + "</th>";
   }
-  // Kolom tambahan (header)
-  extraKolom.forEach(function(c) {
-    html += "<th rowspan='2' style='width:" + c.lebar + "px;'>" + escHtml(c.nama) + "</th>";
-  });
   html += "</tr>";
   
   // Baris kedua: Tanggal
   html += "<tr>";
-  for (var i = 1; i <= 14; i++) {
+  for (var i = 1; i <= jumlahPertemuan; i++) {
     html += "<th class='col-presensi' style='font-size: 7pt; background: #f0f0f0; border-top: none; text-align: left; padding-left: 2px;'>Tgl:</th>";
   }
   html += "</tr>";
@@ -635,13 +568,9 @@ function generatePresensiHTML(k) {
     html += "<td>" + (index + 1) + "</td>";
     html += "<td>" + m.nim + "</td>";
     html += "<td class='col-nama'>" + m.nama + "</td>";
-    for (var j = 1; j <= 14; j++) {
+    for (var j = 1; j <= jumlahPertemuan; j++) {
       html += "<td></td>";
     }
-    // Kolom tambahan (isi kosong)
-    extraKolom.forEach(function() {
-      html += "<td></td>";
-    });
     html += "</tr>";
   });
 
@@ -1299,7 +1228,7 @@ function generateMoodleCSV() {
 }
 
 // Muat data saat page load
-loadExtraKolom();
+loadJumlahKolom();
 window.addEventListener('load', loadData);
 </script>
 
