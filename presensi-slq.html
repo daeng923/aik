@@ -114,6 +114,13 @@
   #gate .gate-title { font-size: 26px; margin: 2px 0 6px; }
   .gate-desc { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
 
+  .ed { cursor: text; border-radius: 4px; }
+  .ed:hover { outline: 1px dashed #94a3b8; outline-offset: 2px; }
+  .ed:focus { outline: 2px solid var(--primary); outline-offset: 2px; background: #fffbeb; }
+  .ed:empty { min-height: 1em; }
+
+  body.locked .topbar, body.locked .container { visibility: hidden; }
+  
   /* ============ LEMBAR CETAK (presensi & laporan) ============ */
   .sheet { background: #fff; padding: 10px; margin: 0 auto 14px; width: 100%; min-width: 900px; font-family: 'Times New Roman', Times, serif; color: #000; font-size: 9.5pt; line-height: 1.15; page-break-after: always; }
   .sheet:last-child { page-break-after: auto; }
@@ -150,10 +157,10 @@
   }
 </style>
 </head>
-<body>
+<body class="locked">
 
 <!-- ============ GERBANG KODE AKSES ============ -->
-<div id="gate" class="backdrop">
+<div id="gate" class="backdrop open">
   <div class="modal">
     <div class="gate-logo">A</div>
     <div class="eyebrow">Admin Presensi</div>
@@ -207,8 +214,10 @@
       <span class="hint" id="infoKolom"></span>
       <span class="divider"></span>
       <button class="btn violet" id="btnTanggal1">📅 Set Tanggal</button>
+      <button class="btn ghost" id="btnResetJudul1">↺ Reset Judul</button>
       <button class="btn warn" id="btnImport">📥 Import Data</button>
       <button class="btn violet" id="btnMoodle">📤 Export Moodle</button>
+      <span class="hint">✏️ Klik judul pada lembar untuk mengubahnya.</span>
     </div>
   </section>
 
@@ -219,8 +228,9 @@
       <button class="btn ok" id="btnPrintAllL" disabled>🖨️ Cetak Semua</button>
       <span class="divider"></span>
       <button class="btn violet" id="btnTanggal2">📅 Set Tanggal</button>
+      <button class="btn ghost" id="btnResetJudul2">↺ Reset Judul</button>
       <button class="btn warn" id="btnImport2">📥 Import Presensi</button>
-      <span class="hint">Jumlah pertemuan mengikuti pengaturan kolom di tab Presensi.</span>
+      <span class="hint">Jumlah pertemuan mengikuti pengaturan kolom di tab Presensi. ✏️ Klik judul pada lembar untuk mengubahnya.</span>
     </div>
   </section>
 
@@ -411,15 +421,23 @@ function cmpNum(a, b) { return String(a).localeCompare(String(b), undefined, { n
 
 /* ================= AKSES ================= */
 function getToken() { return ssGet(TOKEN_KEY) || ""; }
+function setGateBusy(on) {
+  var b = $("gateBtn");
+  b.disabled = on; b.textContent = on ? "Memverifikasi…" : "Masuk";
+}
+function lockApp() { document.body.classList.add("locked"); }
+function unlockApp() { document.body.classList.remove("locked"); closeModal("gate"); setGateBusy(false); }
 function showGate(msg) {
-  openModal("gate");
+  lockApp(); setGateBusy(false); openModal("gate");
   if (msg) showAlert("gateErr", msg); else hideAlert("gateErr");
   $("gateInput").value = ""; $("gateInput").focus();
 }
 function submitGate() {
   var v = $("gateInput").value.trim();
   if (!v) { showAlert("gateErr", "Kode akses wajib diisi."); return; }
-  ssSet(TOKEN_KEY, v); closeModal("gate"); loadData();
+  ssSet(TOKEN_KEY, v); hideAlert("gateErr");
+  setGateBusy(true);
+  loadData();   // gerbang baru ditutup setelah server menyatakan password benar
 }
 function logout() {
   ssDel(TOKEN_KEY); dataReady = false; dataKelompok = {}; kelompokList = [];
@@ -499,6 +517,7 @@ function resetTanggal() {
 function loadData() {
   var token = getToken();
   if (!token) { showGate(); return; }
+  if (document.body.classList.contains("locked")) setGateBusy(true);
   setStatus("load", "Memuat data…");
   enableControls(false);
   fetch(CONFIG.GAS_URL + "?token=" + encodeURIComponent(token) + "&v=" + Date.now())
@@ -508,6 +527,7 @@ function loadData() {
         if (res.code === "AUTH") { ssDel(TOKEN_KEY); setStatus("err", "Akses ditolak"); showGate("Kode akses salah."); return; }
         throw new Error(res.error || "Respons tidak valid");
       }
+      unlockApp();
       processData(res.data || []);
       processPresensi(res.presensi || []);
       populateSelect();
@@ -520,7 +540,8 @@ function loadData() {
     .catch(function (err) {
       console.error(err);
       setStatus("err", "✗ Gagal memuat");
-      toast("Gagal mengambil data: " + err.message, "err");
+      if (document.body.classList.contains("locked")) showGate("Gagal terhubung ke server: " + err.message);
+      else toast("Gagal mengambil data: " + err.message, "err");
     });
 }
 function totalPeserta() { var n = 0; for (var k in dataKelompok) n += dataKelompok[k].data.length; return n; }
@@ -571,6 +592,40 @@ function moveKelompok(d) {
   render();
 }
 
+/* ================= JUDUL (bisa diubah) ================= */
+var TITLE_KEY = "presensi_judul";
+var DEFAULT_TITLES = {
+  p1: "Presensi Kelompok Pembelajaran Al-Qur'an",
+  p2: "Mahasiswa Angkatan 2025",
+  lap: "Laporan Presensi Kelompok Pembelajaran Al-Qur'an"
+};
+var titles = {};
+function loadTitles() {
+  titles = {};
+  var k;
+  for (k in DEFAULT_TITLES) titles[k] = DEFAULT_TITLES[k];
+  try {
+    var o = JSON.parse(lsGet(TITLE_KEY) || "{}");
+    for (k in DEFAULT_TITLES) if (o && typeof o[k] === "string" && o[k].trim()) titles[k] = o[k];
+  } catch (e) {}
+}
+function saveTitles() { lsSet(TITLE_KEY, JSON.stringify(titles)); }
+function edAttr(key) { return " class='ed' contenteditable='true' spellcheck='false' data-t='" + key + "'"; }
+function onTitleBlur(e) {
+  var t = e.target;
+  if (!t || !t.getAttribute) return;
+  var key = t.getAttribute("data-t");
+  if (!key) return;
+  var v = t.textContent.replace(/\s+/g, " ").trim() || DEFAULT_TITLES[key];
+  titles[key] = v; saveTitles();
+  [].forEach.call($("output").querySelectorAll("[data-t='" + key + "']"), function (el) { el.textContent = v; });
+}
+function resetTitles() {
+  lsSet(TITLE_KEY, "{}"); loadTitles();
+  if ($("output").innerHTML) render();
+  toast("Judul dikembalikan ke bawaan.");
+}
+
 /* ================= RENDER ================= */
 function isHadir(v) { return /^(h|hadir|1|✓|✔|p|present|y|ya)$/i.test(String(v || "").trim()); }
 
@@ -578,7 +633,7 @@ function genPresensi(k) {
   var obj = dataKelompok[k], n = jumlahPertemuan, tg = pertemuanDates[k] || {};
   var h = "<div class='sheet" + (n > 20 ? " dense" : "") + "'>";
   h += "<div class='head'><div class='head-title'>";
-  h += "<h2>Presensi Kelompok Pembelajaran Al-Qur'an</h2><h2>Mahasiswa Angkatan 2025</h2>";
+  h += "<h2" + edAttr("p1") + ">" + esc(titles.p1) + "</h2><h2" + edAttr("p2") + ">" + esc(titles.p2) + "</h2>";
   h += "<div class='meta'><p><strong>Kelompok:</strong> " + esc(k) + "</p><p><strong>Instruktur:</strong> " + esc(obj.instruktur) + "</p></div></div>";
   if (obj.link) {
     var qr = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(obj.link);
@@ -611,7 +666,7 @@ function genLaporan(k, withNotice) {
     h += "<div class='notice'>⚠️ Belum ada data kehadiran (sheet &quot;presensi&quot;). Kolom kehadiran dikosongkan. Gunakan <strong>Import Presensi</strong>.</div>";
   }
   h += "<div class='sheet" + (n > 20 ? " dense" : "") + "'>";
-  h += "<h2 style='text-align:center;margin:0 0 3px;font-size:12pt;'>LAPORAN PRESENSI KELOMPOK PEMBELAJARAN AL-QUR'AN</h2>";
+  h += "<h2" + edAttr("lap") + " style='text-align:center;margin:0 0 3px;font-size:12pt;text-transform:uppercase;'>" + esc(titles.lap) + "</h2>";
   h += "<p class='sub'>Kelompok: " + esc(k) + " | Instruktur: " + esc(obj.instruktur) + "</p>";
   h += "<p style='text-align:right;margin:0 0 6px;font-size:8pt;color:#555;'>Dicetak: " + now.toLocaleDateString("id-ID") + " " + now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + "</p>";
   h += "<table><thead><tr><th class='c-no'>No</th><th class='c-nim'>NIM</th><th class='c-nama'>Nama Peserta</th>";
@@ -913,6 +968,18 @@ function bind() {
       $("srcPaste").style.display = v === "paste" ? "" : "none";
     };
   });
+  $("output").addEventListener("blur", onTitleBlur, true);
+  $("output").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.getAttribute && e.target.getAttribute("data-t")) { e.preventDefault(); e.target.blur(); }
+  });
+  $("output").addEventListener("paste", function (e) {
+    if (e.target.getAttribute && e.target.getAttribute("data-t")) {
+      e.preventDefault();
+      var txt = (e.clipboardData || window.clipboardData).getData("text").replace(/[\r\n]+/g, " ");
+      document.execCommand("insertText", false, txt);
+    }
+  });
+  $("btnResetJudul1").onclick = resetTitles; $("btnResetJudul2").onclick = resetTitles;
   $("btnMoodle").onclick = openMoodle;
   $("moodleAccount").onchange = function () { $("moodlePwBox").style.display = this.checked ? "" : "none"; };
   $("btnMoodleCancel").onclick = function () { closeModal("moodleModal"); };
@@ -921,6 +988,7 @@ function bind() {
 
 loadJumlahKolom();
 loadTanggal();
+loadTitles();
 bind();
 window.addEventListener("load", loadData);
 </script>
