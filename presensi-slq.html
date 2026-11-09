@@ -119,8 +119,51 @@
   .ed:focus { outline: 2px solid var(--primary); outline-offset: 2px; background: #fffbeb; }
   .ed:empty { min-height: 1em; }
 
-  body.locked .topbar, body.locked .container { visibility: hidden; }
+  body.locked .app { visibility: hidden; }
   
+  /* ============ LAYOUT MENU KIRI (gaya aplikasi layanan) ============ */
+  .app { display: flex; gap: 20px; align-items: flex-start; max-width: 1800px; margin: 0 auto; padding: 16px; }
+  .side { width: 252px; flex-shrink: 0; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .side-card { background: #fff; border: 1px solid #f0f0f2; border-radius: 20px; padding: 12px; box-shadow: 0 2px 12px rgba(15,23,42,.04); }
+  .side-label { padding: 12px 10px 6px; }
+  .side-label:first-child { padding-top: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px; font-weight: 600; font-size: 14px; color: #475569; cursor: pointer; user-select: none; transition: background .15s, color .15s; }
+  .nav-item:hover { background: #f8fafc; color: var(--ink); }
+  .nav-item.active { background: #fef2f2; color: var(--primary); font-weight: 700; }
+  .nav-item .ico { width: 22px; text-align: center; font-size: 16px; }
+  .stepper { padding: 6px 10px 4px; }
+  .step-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; background: #f8fafc; border: 1px solid #eef0f3; border-radius: 12px; padding: 4px; }
+  .step-row b { font-size: 16px; font-weight: 800; }
+  .step-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: #fff; border: 1px solid #e5e7eb; font-weight: 800; font-size: 18px; cursor: pointer; user-select: none; }
+  .step-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .stat-row { display: flex; justify-content: space-between; padding: 7px 10px; font-size: 13px; color: #475569; }
+  .stat-row b { color: var(--ink); font-weight: 800; }
+  .side-btn { width: 100%; padding: 12px; }
+  .main-col { flex: 1; min-width: 0; }
+  .head-card { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #fff; border: 1px solid #f0f0f2; border-radius: 20px; padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(15,23,42,.04); }
+  .head-card h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+  .red-box { background: var(--primary); color: #fff; border-radius: 14px; padding: 8px 18px; text-align: center; line-height: 1.15; }
+  .red-box small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+  .red-box b { font-size: 20px; font-weight: 800; }
+  .clock { text-align: right; line-height: 1.25; }
+  .clock b { display: block; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .clock small { color: var(--muted); font-size: 12px; }
+  .page-title { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+  .page-title .bar { width: 4px; height: 26px; border-radius: 2px; background: var(--primary); }
+  .page-title h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+  .chip.ok::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.5); } 70% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); } }
+  .hbtn { display: none; width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #e5e7eb; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; flex-shrink: 0; }
+  #menuBackdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 140; }
+  @media (max-width: 900px) {
+    .app { padding: 12px; }
+    .side { position: fixed; left: 0; top: 0; bottom: 0; max-height: none; width: 276px; background: #fdfdfd; padding: 12px; transform: translateX(-105%); transition: transform .2s; z-index: 150; }
+    body.menu-open .side { transform: none; }
+    body.menu-open #menuBackdrop { display: block; }
+    .hbtn { display: flex; }
+    .clock { display: none; }
+  }
+
   /* ============ LEMBAR CETAK (presensi & laporan) ============ */
   .sheet { background: #fff; padding: 10px; margin: 0 auto 14px; width: 100%; min-width: 900px; font-family: 'Times New Roman', Times, serif; color: #000; font-size: 9.5pt; line-height: 1.15; page-break-after: always; }
   .sheet:last-child { page-break-after: auto; }
@@ -151,6 +194,8 @@
     body { background: #fff; }
     .no-print, .topbar, .tabs, .card, .empty, .notice, #toasts, .backdrop { display: none !important; }
     .container { max-width: none; padding: 0; }
+    .app { display: block; padding: 0; max-width: none; }
+    .main-col { display: block; }
     .paper-wrap { background: none; border: 0; padding: 0; overflow: visible; }
     .sheet { padding: 0; margin: 0; min-width: 0; }
     .sheet th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -172,71 +217,92 @@
   </div>
 </div>
 
-<!-- ============ TOPBAR ============ -->
-<header class="topbar no-print">
-  <div class="topbar-inner">
-    <div class="brand">
+<div id="menuBackdrop"></div>
+<div class="app">
+
+  <!-- ============ MENU KIRI ============ -->
+  <aside class="side no-print" id="side">
+    <div class="side-card">
+      <div class="eyebrow side-label">Menu</div>
+      <div class="nav-item active" id="tabBtn-presensi"><span class="ico">📋</span>Presensi</div>
+      <div class="nav-item" id="tabBtn-laporan"><span class="ico">📊</span>Laporan</div>
+
+      <div class="eyebrow side-label">Data</div>
+      <div class="nav-item" id="btnImport"><span class="ico">📥</span>Import Peserta</div>
+      <div class="nav-item" id="btnImport2"><span class="ico">✅</span>Import Kehadiran</div>
+      <div class="nav-item" id="btnMoodle"><span class="ico">📤</span>Export Moodle</div>
+
+      <div class="eyebrow side-label">Pengaturan</div>
+      <div class="nav-item" id="btnTanggal1"><span class="ico">📅</span>Set Tanggal</div>
+      <div class="nav-item" id="btnResetJudul1"><span class="ico">↺</span>Reset Judul</div>
+      <div class="stepper">
+        <span class="eyebrow">Jumlah Pertemuan</span>
+        <div class="step-row">
+          <div class="step-btn" id="btnDelCol">−</div>
+          <b id="infoKolom">14</b>
+          <div class="step-btn" id="btnAddCol">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="eyebrow side-label">Ringkasan</div>
+      <div class="stat-row"><span>Kelompok</span><b id="statKelompok">-</b></div>
+      <div class="stat-row"><span>Peserta</span><b id="statPeserta">-</b></div>
+      <div class="stat-row"><span>Pertemuan</span><b id="statPertemuan">14</b></div>
+    </div>
+
+    <button class="btn ghost side-btn" id="btnReload">🔄 Muat Ulang</button>
+    <button class="btn side-btn" id="btnLogout">KELUAR</button>
+  </aside>
+
+  <!-- ============ KONTEN ============ -->
+  <main class="main-col">
+    <header class="head-card no-print">
+      <div class="hbtn" id="btnMenu">☰</div>
       <div class="brand-icon">A</div>
-      <div><div class="eyebrow">AIK UMM · BPP-MKWK</div><h1>Presensi Al-Qur'an</h1></div>
-    </div>
-    <span class="chip" id="statusChip">Belum dimuat</span>
-    <button class="btn ghost sm" id="btnReload">🔄 Muat Ulang</button>
-    <button class="btn ghost sm" id="btnLogout">🚪 Keluar</button>
-  </div>
-</header>
+      <div class="grow">
+        <div class="eyebrow">AIK UMM · BPP-MKWK</div>
+        <h1>Presensi Al-Qur'an</h1>
+        <span class="chip" id="statusChip" style="margin-top:4px;">Belum dimuat</span>
+      </div>
+      <div class="red-box"><small>Pertemuan</small><b id="headPert">14</b></div>
+      <div class="clock"><b id="clock">--:--:--</b><small id="dateLabel"></small></div>
+    </header>
 
-<main class="container">
-  <!-- Navigasi kelompok -->
-  <section class="card no-print">
-    <p class="card-title">Pilih Kelompok</p>
-    <div class="row">
-      <button class="btn ghost" id="btnPrev">←</button>
-      <select id="kelompok" disabled><option>Memuat data...</option></select>
-      <button class="btn ghost" id="btnNext">→</button>
-      <button class="btn" id="btnRender" disabled>Tampilkan</button>
-      <span class="hint" id="countInfo"></span>
-    </div>
-  </section>
+    <div class="page-title no-print"><span class="bar"></span><h2 id="pageTitle">Presensi</h2></div>
 
-  <div class="tabs no-print">
-    <button class="tab active" id="tabBtn-presensi">📋 Presensi</button>
-    <button class="tab" id="tabBtn-laporan">📊 Laporan</button>
-  </div>
+    <section class="card no-print">
+      <p class="card-title">Pilih Kelompok</p>
+      <div class="row">
+        <button class="btn ghost" id="btnPrev">←</button>
+        <select id="kelompok" disabled><option>Memuat data...</option></select>
+        <button class="btn ghost" id="btnNext">→</button>
+        <button class="btn" id="btnRender" disabled>Tampilkan</button>
+        <span class="hint" id="countInfo"></span>
+      </div>
+    </section>
 
-  <!-- Aksi Presensi -->
-  <section class="card no-print" id="panel-presensi">
-    <div class="row">
-      <button class="btn ok" id="btnPrint" disabled>🖨️ Cetak</button>
-      <button class="btn ok" id="btnPrintAll" disabled>🖨️ Cetak Semua</button>
-      <span class="divider"></span>
-      <button class="btn teal sm" id="btnAddCol">➕ Kolom</button>
-      <button class="btn danger sm" id="btnDelCol">➖ Kolom</button>
-      <span class="hint" id="infoKolom"></span>
-      <span class="divider"></span>
-      <button class="btn violet" id="btnTanggal1">📅 Set Tanggal</button>
-      <button class="btn ghost" id="btnResetJudul1">↺ Reset Judul</button>
-      <button class="btn warn" id="btnImport">📥 Import Data</button>
-      <button class="btn violet" id="btnMoodle">📤 Export Moodle</button>
-      <span class="hint">✏️ Klik judul pada lembar untuk mengubahnya.</span>
-    </div>
-  </section>
+    <section class="card no-print" id="panel-presensi">
+      <div class="row">
+        <button class="btn ok" id="btnPrint" disabled>🖨️ Cetak</button>
+        <button class="btn ok" id="btnPrintAll" disabled>🖨️ Cetak Semua</button>
+        <span class="hint">✏️ Klik judul pada lembar untuk mengubahnya.</span>
+      </div>
+    </section>
 
-  <!-- Aksi Laporan -->
-  <section class="card no-print" id="panel-laporan" style="display:none;">
-    <div class="row">
-      <button class="btn ok" id="btnPrintL" disabled>🖨️ Cetak</button>
-      <button class="btn ok" id="btnPrintAllL" disabled>🖨️ Cetak Semua</button>
-      <span class="divider"></span>
-      <button class="btn violet" id="btnTanggal2">📅 Set Tanggal</button>
-      <button class="btn ghost" id="btnResetJudul2">↺ Reset Judul</button>
-      <button class="btn warn" id="btnImport2">📥 Import Presensi</button>
-      <span class="hint">Jumlah pertemuan mengikuti pengaturan kolom di tab Presensi. ✏️ Klik judul pada lembar untuk mengubahnya.</span>
-    </div>
-  </section>
+    <section class="card no-print" id="panel-laporan" style="display:none;">
+      <div class="row">
+        <button class="btn ok" id="btnPrintL" disabled>🖨️ Cetak</button>
+        <button class="btn ok" id="btnPrintAllL" disabled>🖨️ Cetak Semua</button>
+        <span class="hint">Jumlah pertemuan mengikuti pengaturan di menu kiri. ✏️ Klik judul pada lembar untuk mengubahnya.</span>
+      </div>
+    </section>
 
-  <div id="emptyState" class="empty no-print">Pilih kelompok lalu klik <strong>Tampilkan</strong>.</div>
-  <div id="output" class="paper-wrap"></div>
-</main>
+    <div id="emptyState" class="empty no-print">Pilih kelompok lalu klik <strong>Tampilkan</strong>.</div>
+    <div id="output" class="paper-wrap"></div>
+  </main>
+</div>
 
 <!-- ============ MODAL IMPORT ============ -->
 <div id="importModal" class="backdrop">
@@ -451,7 +517,7 @@ function loadJumlahKolom() {
   if (!isNaN(v) && v >= CONFIG.JUMLAH_DEFAULT && v <= CONFIG.JUMLAH_MAX) jumlahPertemuan = v;
   updateInfoKolom();
 }
-function updateInfoKolom() { $("infoKolom").textContent = "Kolom: " + jumlahPertemuan; $("tglJumlah").textContent = jumlahPertemuan; }
+function updateInfoKolom() { $("infoKolom").textContent = jumlahPertemuan; $("tglJumlah").textContent = jumlahPertemuan; $("headPert").textContent = jumlahPertemuan; $("statPertemuan").textContent = jumlahPertemuan; }
 function ubahKolom(delta) {
   var n = jumlahPertemuan + delta;
   if (n > CONFIG.JUMLAH_MAX) { toast("Maksimal " + CONFIG.JUMLAH_MAX + " kolom.", "err"); return; }
@@ -533,7 +599,8 @@ function loadData() {
       populateSelect();
       dataReady = true;
       enableControls(kelompokList.length > 0);
-      setStatus("ok", "✓ " + kelompokList.length + " kelompok, " + totalPeserta() + " peserta");
+      setStatus("ok", "Terhubung");
+      $("statKelompok").textContent = kelompokList.length; $("statPeserta").textContent = totalPeserta();
       if (kelompokList.length === 0) toast("Belum ada data peserta. Gunakan Import Data.", "err");
       else render();
     })
@@ -727,6 +794,7 @@ function switchTab(view) {
   currentView = view;
   $("tabBtn-presensi").classList.toggle("active", view === "presensi");
   $("tabBtn-laporan").classList.toggle("active", view === "laporan");
+  $("pageTitle").textContent = view === "presensi" ? "Presensi" : "Laporan";
   $("panel-presensi").style.display = view === "presensi" ? "" : "none";
   $("panel-laporan").style.display = view === "laporan" ? "" : "none";
   if (dataReady) render();
@@ -953,7 +1021,7 @@ function bind() {
   $("btnPrintAll").onclick = printAll; $("btnPrintAllL").onclick = printAll;
   $("btnAddCol").onclick = function () { ubahKolom(1); };
   $("btnDelCol").onclick = function () { ubahKolom(-1); };
-  $("btnTanggal1").onclick = openTanggal; $("btnTanggal2").onclick = openTanggal;
+  $("btnTanggal1").onclick = openTanggal;
   $("btnTglGo").onclick = generateTanggal; $("btnTglReset").onclick = resetTanggal;
   $("btnTglCancel").onclick = function () { closeModal("tanggalModal"); };
   $("btnImport").onclick = function () { openImport("peserta"); };
@@ -979,7 +1047,12 @@ function bind() {
       document.execCommand("insertText", false, txt);
     }
   });
-  $("btnResetJudul1").onclick = resetTitles; $("btnResetJudul2").onclick = resetTitles;
+  $("btnResetJudul1").onclick = resetTitles;
+  $("btnMenu").onclick = function () { document.body.classList.toggle("menu-open"); };
+  $("menuBackdrop").onclick = function () { document.body.classList.remove("menu-open"); };
+  $("side").addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest(".nav-item")) document.body.classList.remove("menu-open");
+  });
   $("btnMoodle").onclick = openMoodle;
   $("moodleAccount").onchange = function () { $("moodlePwBox").style.display = this.checked ? "" : "none"; };
   $("btnMoodleCancel").onclick = function () { closeModal("moodleModal"); };
@@ -990,6 +1063,13 @@ loadJumlahKolom();
 loadTanggal();
 loadTitles();
 bind();
+updateInfoKolom();
+function tickClock() {
+  var d = new Date();
+  $("clock").textContent = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  $("dateLabel").textContent = d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+tickClock(); setInterval(tickClock, 1000);
 window.addEventListener("load", loadData);
 </script>
 </body>
