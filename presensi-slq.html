@@ -1,1236 +1,928 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<meta charset="utf-8">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presensi Al-Qur'an</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  /* ============ TOKEN WARNA (ubah di sini untuk ganti tema) ============ */
+  :root {
+    --primary: #dc2626; --primary-dark: #b91c1c; --primary-soft: #fef2f2;
+    --ok: #16a34a; --warn: #f59e0b; --danger: #dc2626; --violet: #7c3aed; --teal: #0d9488;
+    --ink: #0f172a; --muted: #64748b; --line: #e5e7eb; --bg: #fdfdfd; --card: #ffffff;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; font-size: 14px; line-height: 1.45; }
 
-  <style>
-    body { font-family: 'Times New Roman', Times, serif; padding: 5px; color: #333; line-height: 1.1; font-size: 9.5pt; }
-    
-    /* UI Elements */
-    .controls { margin-bottom: 20px; background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
-    button { cursor: pointer; padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; }
-    button:hover { background: #0056b3; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    select { padding: 7px; border-radius: 4px; border: 1px solid #ccc; min-width: 250px; }
-    .loading { color: #666; font-style: italic; margin-left: 10px; }
-    .error { color: #d32f2f; margin-top: 10px; padding: 10px; background: #ffebee; border-radius: 4px; }
+  /* ============ APP CHROME ============ */
+  .topbar { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 50; }
+  .topbar-inner { max-width: 1280px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+  .brand-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .brand h1 { margin: 0; font-size: 16px; font-weight: 700; }
+  .brand small { color: var(--muted); font-size: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+  .chip.ok { background: #f0fdf4; color: var(--ok); border-color: #bbf7d0; }
+  .chip.err { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+  .chip.load { background: var(--primary-soft); color: var(--primary); border-color: #c7d2fe; }
 
-    /* Tab Styling */
-    .tab-content { padding: 0; }
-    
-    /* Laporan Table */
-    .laporan-container { margin-top: 20px; }
-    .laporan-table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; border: 1.5px solid #000; }
-    .laporan-table th, .laporan-table td { border: 1px solid #000; padding: 3px 2px; font-size: 8.5pt; text-align: center; height: 18px; }
-    .laporan-table th { background: #f2f2f2 !important; font-weight: bold; }
-    .laporan-table .col-no { width: 30px; }
-    .laporan-table .col-nim { width: 85px; }
-    .laporan-table .col-nama { width: 180px; text-align: left; padding-left: 4px; }
-    .laporan-table .col-pertemuan { width: 22px; font-size: 7.5pt; }
-    .laporan-table .col-total { width: 30px; font-weight: bold; }
-    
-    .mark-hadir { color: #28a745; font-weight: bold; }
-    .mark-absen { color: #d32f2f; font-weight: bold; }
-    
-    @media print {
-      .laporan-container { page-break-inside: avoid; }
-      .laporan-table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
-    }
+  .container { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+  .card-title { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
 
-    /* Spinner Animation */
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #2196F3;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
+  .tabs { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; margin-bottom: 14px; }
+  .tab { padding: 8px 16px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); font-weight: 600; cursor: pointer; font-size: 14px; }
+  .tab.active { background: var(--card); color: var(--primary); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
 
-    /* Presence Layout */
-    .print-container { width: 100%; height: auto; }
-    
-    /* Header Wrapper for Balance */
-    .header-wrapper { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: flex-start; 
-      margin-bottom: 3px;
-    }
-    
-    .header-title { 
-      flex: 1; 
-      text-align: center; 
-      padding-left: 85px; 
-    } 
-    .header-title h2 { margin: 0; font-size: 12pt; text-transform: uppercase; color: #000; }
-    
-    .meta-info { margin-top: 3px; font-size: 9.5pt; } 
-    .meta-info p { margin: 1px 0; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .grow { flex: 1; }
+  select, input[type=text], input[type=password], input[type=date], textarea {
+    padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; width: 100%;
+  }
+  select { width: auto; min-width: 260px; max-width: 100%; }
+  select:focus, input:focus, textarea:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; resize: vertical; }
 
-    /* QR Box Position Adjusted */
-    .qr-box { 
-      width: 80px; 
-      text-align: center; 
-      border: 1px solid #000; 
-      padding: 2px; 
-      background: #fff; 
-      flex-shrink: 0;
-    }
-    .qr-box img { width: 70px; height: 70px; display: block; margin: 0 auto; }
-    .qr-box span { display: block; font-size: 6pt; font-weight: bold; margin-top: 1px; }
+  .btn { cursor: pointer; padding: 9px 14px; border: 1px solid transparent; border-radius: 8px; font: inherit; font-weight: 600; color: #fff; background: var(--primary); white-space: nowrap; transition: filter .15s; }
+  .btn:hover { filter: brightness(.93); }
+  .btn:disabled { background: #cbd5e1 !important; color: #fff; cursor: not-allowed; filter: none; }
+  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+  .btn.ok { background: var(--ok); } .btn.warn { background: var(--warn); } .btn.danger { background: var(--danger); }
+  .btn.violet { background: var(--violet); } .btn.teal { background: var(--teal); }
+  .btn.sm { padding: 6px 10px; font-size: 13px; }
+  .divider { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+  .hint { color: var(--muted); font-size: 12px; }
 
-    table { border-collapse: collapse; width: 100%; margin-top: 5px; table-layout: fixed; border: 1.5px solid #000; clear: both; }
-    th, td { border: 1px solid #000; padding: 1px 1px; font-size: 8.5pt; text-align: center; overflow: hidden; height: 17px; } 
-    th { background: #f2f2f2 !important; font-weight: bold; height: 22px; }
-    
-    /* Column Widths */
-    .col-no { width: 30px; }
-    .col-nim { width: 85px; }
-    .col-nama { width: 200px; text-align: left; padding-left: 4px; }
-    .col-presensi { width: 22px; }
+  .paper-wrap { background: #e2e8f0; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; overflow-x: auto; }
+  .paper-wrap:empty { display: none; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); }
+  .notice { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; font-size: 12px; font-family: Inter, system-ui, sans-serif; }
 
-    .footer { 
-      margin-top: 5px; 
-      font-size: 7.5pt; 
-      display: flex;
-      justify-content: space-between;
-      border-top: 1px solid #000;
-      padding-top: 2px;
-    }
+  /* ============ MODAL / OVERLAY ============ */
+  .backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 100; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+  .backdrop.open { display: flex; }
+  .modal { background: var(--card); border-radius: 14px; padding: 20px; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(15,23,42,.3); }
+  .modal h2 { margin: 0 0 14px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field > label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px; }
+  .info { background: var(--primary-soft); color: #3730a3; padding: 10px 12px; border-radius: 8px; font-size: 12.5px; margin-bottom: 14px; }
+  .alert { display: none; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; white-space: pre-line; font-size: 13px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .radio-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 
-    @media print {
-      @page { 
-        size: 330mm 215mm; /* Ukuran Folio / F4 Landscape */
-        margin: 1.5cm 0.7cm 0.5cm 0.7cm; 
-      }
-      body { padding: 0; margin: 0; }
-      .controls { display: none; }
-      .print-container { page-break-after: always; }
-      th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
-    }
-  </style>
+  #loadingOverlay { z-index: 200; }
+  .spinner { border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; margin: 10px auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress { background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; }
+  .progress > div { background: var(--primary); height: 100%; width: 0; transition: width .3s; }
+
+  #gate { z-index: 300; background: var(--bg); }
+  #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; max-width: 360px; box-shadow: 0 8px 24px rgba(15,23,42,.25); white-space: pre-line; }
+  .toast.ok { background: var(--ok); } .toast.err { background: var(--danger); }
+
+  /* ============ GAYA CMS AIK UMM ============ */
+  body { font-family: "Plus Jakarta Sans", Inter, "Segoe UI", system-ui, sans-serif; background-color: #fdfdfd; background-image: radial-gradient(#e4e4e8 1.2px, transparent 1.2px); background-size: 28px 28px; }
+  .eyebrow { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; }
+  .topbar { background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid #f0f0f2; }
+  .brand-icon { width: 40px; height: 40px; border-radius: 12px; font-weight: 800; font-size: 20px; }
+  .brand h1 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+  .card { border: 1px solid #f0f0f2; border-radius: 20px; box-shadow: 0 2px 12px rgba(15,23,42,.04); }
+  .card-title, .field > label { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+  .field > label.check { display: flex; gap: 8px; align-items: center; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  select, input[type=text], input[type=password], input[type=date], textarea { border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 11px 14px; }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .btn { border-radius: 12px; font-weight: 700; }
+  .btn.ghost { border-color: #e5e7eb; }
+  .tabs { background: #f4f4f5; border-color: #ececee; border-radius: 12px; }
+  .tab { border-radius: 9px; font-weight: 700; }
+  .modal { border-radius: 24px; padding: 28px; }
+  .modal h2 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+  .info { background: #f8fafc; color: #475569; border: 1px solid #eef0f3; }
+  .paper-wrap { border-radius: 20px; background: #eceef2; }
+  #gate { background: #fdfdfd; background-image: radial-gradient(#e4e4e8 1.2px, transparent 1.2px); background-size: 28px 28px; }
+  #gate .modal { max-width: 382px; border: 1px solid #f1f1f3; box-shadow: 0 8px 30px rgba(15,23,42,.06); }
+  .gate-logo { width: 56px; height: 56px; border-radius: 16px; background: var(--primary); color: #fff; font-size: 26px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  #gate .gate-title { font-size: 26px; margin: 2px 0 6px; }
+  .gate-desc { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+
+  /* ============ LEMBAR CETAK (presensi & laporan) ============ */
+  .sheet { background: #fff; padding: 10px; margin: 0 auto 14px; width: 100%; min-width: 900px; font-family: 'Times New Roman', Times, serif; color: #000; font-size: 9.5pt; line-height: 1.15; page-break-after: always; }
+  .sheet:last-child { page-break-after: auto; }
+  .sheet .head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+  .sheet .head-title { flex: 1; text-align: center; padding-left: 85px; }
+  .sheet .head-title h2 { margin: 0; font-size: 12pt; text-transform: uppercase; }
+  .sheet .meta { margin-top: 3px; font-size: 9.5pt; text-align: left; }
+  .sheet .meta p { margin: 1px 0; }
+  .sheet .qr { width: 80px; text-align: center; border: 1px solid #000; padding: 2px; background: #fff; flex-shrink: 0; }
+  .sheet .qr img { width: 70px; height: 70px; display: block; margin: 0 auto; }
+  .sheet .qr span { display: block; font-size: 6pt; font-weight: bold; margin-top: 1px; }
+  .sheet table { border-collapse: collapse; width: 100%; margin-top: 5px; table-layout: fixed; border: 1.5px solid #000; }
+  .sheet th, .sheet td { border: 1px solid #000; padding: 1px; font-size: 8.5pt; text-align: center; overflow: hidden; height: 17px; }
+  .sheet th { background: #f2f2f2 !important; font-weight: bold; height: 22px; }
+  .sheet .c-no { width: 30px; } .sheet .c-nim { width: 95px; } .sheet .c-nama { width: 200px; text-align: left; padding-left: 4px; }
+  .sheet .c-p { width: 22px; font-size: 7.5pt; } .sheet .c-total { width: 34px; font-weight: bold; }
+  .sheet .tgl { font-size: 6.5pt; font-weight: normal; }
+  .sheet.dense th, .sheet.dense td { font-size: 7pt; }
+  .sheet .footer { margin-top: 5px; font-size: 7.5pt; display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 2px; }
+  .sheet .foot-c { margin-top: 10px; font-size: 8pt; text-align: center; color: #555; }
+  .sheet .sub { text-align: center; margin: 0 0 3px; font-size: 9pt; color: #444; }
+  .mk-h { color: #16a34a; font-weight: bold; } .mk-a { color: #dc2626; font-weight: bold; }
+
+  @media (max-width: 640px) { select { min-width: 0; width: 100%; } .divider { display: none; } }
+
+  @media print {
+    @page { size: 330mm 215mm; margin: 1.5cm 0.7cm 0.5cm 0.7cm; }
+    body { background: #fff; }
+    .no-print, .topbar, .tabs, .card, .empty, .notice, #toasts, .backdrop { display: none !important; }
+    .container { max-width: none; padding: 0; }
+    .paper-wrap { background: none; border: 0; padding: 0; overflow: visible; }
+    .sheet { padding: 0; margin: 0; min-width: 0; }
+    .sheet th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
 </head>
 <body>
 
-<div class="controls">
-  <div style="display:flex; gap:10px; margin-bottom:15px; border-bottom:2px solid #ddd; padding-bottom:10px;">
-    <button onclick="switchTab('tab-presensi')" id="tabBtn-presensi" style="background:#007bff; padding:8px 15px; font-weight:bold;">📋 Presensi</button>
-    <button onclick="switchTab('tab-laporan')" id="tabBtn-laporan" style="background:#f0f0f0; color:#333; padding:8px 15px;">📊 Laporan</button>
-  </div>
-
-  <div id="tab-presensi" class="tab-content" style="display:block;">
-    <strong>Pilih Kelompok (Kolom F):</strong>
-    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-      <button onclick="prevKelompok()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">← Prev</button>
-      <select id="kelompok" disabled style="flex:1; max-width:300px;">
-        <option value="">Memuat data...</option>
-      </select>
-      <button onclick="nextKelompok()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">Next →</button>
-      <span class="loading" id="loadingStatus"></span>
-    </div>
-    <br><br>
-    <button onclick="render()" id="btnRender" disabled>Tampilkan</button>
-    <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrint" disabled>Cetak Presensi</button>
-    <button onclick="printAllPresensi()" style="background: #198754; color: white; margin-left: 10px;" id="btnPrintAll" disabled>🖨️ Cetak Semua Kelompok</button>
-    <button onclick="tambahKolom()" style="background: #0d9488; color: white; margin-left: 10px;">➕ Tambah Kolom</button>
-    <button onclick="hapusKolom()" style="background: #d32f2f; color: white; margin-left: 5px;">➖ Hapus Kolom</button>
-    <span id="infoKolom" style="margin-left:8px; font-size:9pt; color:#666;"></span>
-    <button onclick="openImportDialog()" style="background: #ff9800; margin-left: 10px;">📥 Import Data</button>
-    <button onclick="openMoodleModal()" style="background: #800080; color: white; margin-left: 10px;">📤 Export Moodle</button>
-  </div>
-
-  <div id="tab-laporan" class="tab-content" style="display:none;">
-    <strong>Filter Laporan:</strong>
-    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-      <button onclick="prevKelompokLaporan()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">← Prev</button>
-      <select id="kelompokLaporan" disabled style="flex:1; max-width:300px;">
-        <option value="">Memuat data...</option>
-      </select>
-      <button onclick="nextKelompokLaporan()" style="background:#6c757d; padding:6px 12px; font-size:10pt;">Next →</button>
-    </div>
-    <br><br>
-    <button onclick="openTanggalPertemuanModal()" style="background:#6c59c6; margin-right:10px;">📅 Set Tanggal Pertemuan</button>
-    <button onclick="renderLaporan()" id="btnRenderLaporan" disabled style="background:#17a2b8;">Tampilkan Laporan</button>
-    <button onclick="window.print()" style="background: #28a745; margin-left: 10px;" id="btnPrintLaporan" disabled>Cetak Laporan</button>
-    <button onclick="printAllLaporan()" style="background: #198754; color: white; margin-left: 10px;" id="btnPrintAllLaporan" disabled>🖨️ Cetak Semua Laporan</button>
+<!-- ============ GERBANG KODE AKSES ============ -->
+<div id="gate" class="backdrop">
+  <div class="modal">
+    <div class="gate-logo">A</div>
+    <div class="eyebrow">Admin Presensi</div>
+    <h2 class="gate-title">AIK UMM</h2>
+    <p class="gate-desc">Masuk untuk mengelola presensi kelompok pembelajaran Al-Qur'an.</p>
+    <div id="gateErr" class="alert"></div>
+    <div class="field"><label for="gateInput">Password</label><input type="password" id="gateInput" autocomplete="current-password"></div>
+    <button class="btn" id="gateBtn" style="width:100%;padding:13px;margin-top:6px;">Masuk</button>
   </div>
 </div>
 
-<div id="importModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-  <div style="background:white; padding:20px; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto;">
-    <h2 style="margin-top:0;">Import Data Peserta</h2>
-    
-    <div style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px;">
-      <strong>📥 Download Template Dulu:</strong>
-      <button onclick="downloadTemplate()" style="background:#2196F3; margin-left:10px; padding:6px 12px;">Unduh template_import.csv</button>
-      <p style="font-size:9pt; color:#666; margin:5px 0 0 0;">Buka dengan Excel, isi data, kemudian import ke sini</p>
+<!-- ============ TOPBAR ============ -->
+<header class="topbar no-print">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-icon">A</div>
+      <div><div class="eyebrow">AIK UMM · BPP-MKWK</div><h1>Presensi Al-Qur'an</h1></div>
     </div>
-    
-    <div style="margin-bottom:15px;">
-      <p style="font-size:11pt; color:#666; margin:0 0 10px 0;">
-        <strong>Pilih salah satu:</strong>
-      </p>
-      
-      <div style="margin-bottom:15px;">
-        <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:10px;">
-          <input type="radio" name="importType" value="csv" checked style="margin-right:10px;">
-          <strong>Upload File CSV</strong>
-        </label>
-        <input type="file" id="csvFile" accept=".csv" style="margin-left:30px; display:block;">
-      </div>
-      
-      <div style="margin-bottom:15px;">
-        <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:10px;">
-          <input type="radio" name="importType" value="paste" style="margin-right:10px;">
-          <strong>Paste Data (Excel/Spreadsheet)</strong>
-        </label>
-        <textarea id="pasteData" placeholder="Paste data dari Excel atau Google Sheets&#10;Harus include header row" style="margin-left:30px; width:100%; height:150px; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:monospace; font-size:9pt;"></textarea>
+    <span class="chip" id="statusChip">Belum dimuat</span>
+    <button class="btn ghost sm" id="btnReload">🔄 Muat Ulang</button>
+    <button class="btn ghost sm" id="btnLogout">🚪 Keluar</button>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Navigasi kelompok -->
+  <section class="card no-print">
+    <p class="card-title">Pilih Kelompok</p>
+    <div class="row">
+      <button class="btn ghost" id="btnPrev">←</button>
+      <select id="kelompok" disabled><option>Memuat data...</option></select>
+      <button class="btn ghost" id="btnNext">→</button>
+      <button class="btn" id="btnRender" disabled>Tampilkan</button>
+      <span class="hint" id="countInfo"></span>
+    </div>
+  </section>
+
+  <div class="tabs no-print">
+    <button class="tab active" id="tabBtn-presensi">📋 Presensi</button>
+    <button class="tab" id="tabBtn-laporan">📊 Laporan</button>
+  </div>
+
+  <!-- Aksi Presensi -->
+  <section class="card no-print" id="panel-presensi">
+    <div class="row">
+      <button class="btn ok" id="btnPrint" disabled>🖨️ Cetak</button>
+      <button class="btn ok" id="btnPrintAll" disabled>🖨️ Cetak Semua</button>
+      <span class="divider"></span>
+      <button class="btn teal sm" id="btnAddCol">➕ Kolom</button>
+      <button class="btn danger sm" id="btnDelCol">➖ Kolom</button>
+      <span class="hint" id="infoKolom"></span>
+      <span class="divider"></span>
+      <button class="btn violet" id="btnTanggal1">📅 Set Tanggal</button>
+      <button class="btn warn" id="btnImport">📥 Import Data</button>
+      <button class="btn violet" id="btnMoodle">📤 Export Moodle</button>
+    </div>
+  </section>
+
+  <!-- Aksi Laporan -->
+  <section class="card no-print" id="panel-laporan" style="display:none;">
+    <div class="row">
+      <button class="btn ok" id="btnPrintL" disabled>🖨️ Cetak</button>
+      <button class="btn ok" id="btnPrintAllL" disabled>🖨️ Cetak Semua</button>
+      <span class="divider"></span>
+      <button class="btn violet" id="btnTanggal2">📅 Set Tanggal</button>
+      <button class="btn warn" id="btnImport2">📥 Import Presensi</button>
+      <span class="hint">Jumlah pertemuan mengikuti pengaturan kolom di tab Presensi.</span>
+    </div>
+  </section>
+
+  <div id="emptyState" class="empty no-print">Pilih kelompok lalu klik <strong>Tampilkan</strong>.</div>
+  <div id="output" class="paper-wrap"></div>
+</main>
+
+<!-- ============ MODAL IMPORT ============ -->
+<div id="importModal" class="backdrop">
+  <div class="modal">
+    <h2>📥 Import Data</h2>
+    <div class="field">
+      <label>Jenis data</label>
+      <select id="importJenis" style="width:100%;">
+        <option value="peserta">Data peserta (sheet "master") — menimpa seluruh data lama</option>
+        <option value="presensi">Data kehadiran (sheet "presensi") — menimpa seluruh data lama</option>
+      </select>
+    </div>
+    <div class="info">
+      <strong>Template:</strong>
+      <button class="btn sm" id="btnTemplate" style="margin-left:6px;">Unduh template CSV</button><br>
+      <span id="templateHint">Kolom: NO, NIM, NAMA, PROGRAM STUDI, KELAS, KELOMPOK, KODE INSTRUKTUR, INSTRUKTUR, LINK WHATSAPP GROUP, GROUP WHATSAPP, KOORDINATOR. Format kolom NIM sebagai teks.</span>
+    </div>
+    <div class="field">
+      <div class="radio-row">
+        <label><input type="radio" name="importSrc" value="file" checked> Upload file</label>
+        <label><input type="radio" name="importSrc" value="paste"> Paste dari Excel/Sheets</label>
       </div>
     </div>
-    
-    <div id="importError" style="display:none; color:#d32f2f; background:#ffebee; padding:10px; border-radius:4px; margin-bottom:10px;"></div>
-    
-    <div style="display:flex; gap:10px; justify-content:flex-end;">
-      <button onclick="closeImportDialog()" style="background:#999;">Batal</button>
-      <button onclick="importDataAction()" style="background:#ff9800;">Import</button>
+    <div class="field" id="srcFile"><input type="file" id="importFile" accept=".csv,.xlsx,.xls,.txt"></div>
+    <div class="field" id="srcPaste" style="display:none;"><textarea id="pasteData" rows="8" placeholder="Paste data termasuk baris header"></textarea></div>
+    <div id="importError" class="alert"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="btnImportCancel">Batal</button>
+      <button class="btn warn" id="btnImportGo">Import</button>
     </div>
   </div>
 </div>
 
-<div id="moodleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
-  <div style="background:white; padding:20px; border-radius:8px; max-width:450px; width:90%;">
-    <h2 style="margin-top:0;">Export CSV Moodle</h2>
-    
-    <div style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px; font-size:9pt;">
-      Fitur ini akan menggabungkan Mahasiswa (sebagai <strong>student</strong>) dan Instruktur (sebagai <strong>teacher</strong>) ke dalam satu file CSV siap upload.
+<!-- ============ MODAL MOODLE ============ -->
+<div id="moodleModal" class="backdrop">
+  <div class="modal">
+    <h2>📤 Export CSV Moodle</h2>
+    <div class="info">Menggabungkan mahasiswa (<strong>student</strong>) dan instruktur (<strong>teacher</strong>) dalam satu CSV. Saat upload di Moodle, pilih <em>Upload type: Add new and update existing users</em> karena satu instruktur bisa memegang beberapa kelompok.</div>
+    <div class="field">
+      <label>Shortname course Moodle (course1)</label>
+      <input type="text" id="moodleCourse" placeholder="contoh: PAI-2025">
     </div>
-
-    <div style="margin-bottom:15px;">
-      <label style="display:block; font-weight:bold; margin-bottom:5px;">Shortname Course Moodle (course1):</label>
-      <input type="text" id="moodleCourseInput" placeholder="contoh: PAI-2025" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
-      <p style="font-size:8pt; color:#666; margin:5px 0 0 0;">Harus sesuai dengan <i>shortname</i> course di Moodle.</p>
-    </div>
-
-    <div style="margin-bottom:20px; background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px;">
-      <label style="display:flex; align-items:flex-start; cursor:pointer;">
-        <input type="checkbox" id="moodleCreateAccount" style="margin-top:3px; margin-right:8px;" checked>
-        <span style="font-weight:bold; font-size:10pt;">Sertakan Data Pembuatan Akun Baru</span>
+    <div class="field">
+      <label class="check">
+        <input type="checkbox" id="moodleAccount" checked> Sertakan data pembuatan akun baru
       </label>
-      <p style="font-size:8pt; color:#666; margin:5px 0 0 20px;">
-        Centang ini jika ada peserta yang belum memiliki akun Moodle. Sistem akan menambahkan kolom <code style="background:#eee; padding:2px;">firstname</code>, <code style="background:#eee; padding:2px;">lastname</code>, <code style="background:#eee; padding:2px;">email</code>, dan <code style="background:#eee; padding:2px;">password</code>.<br><br>
-        <strong>Default Password:</strong> <code>[NIM]</code> (Contoh: 202510050110001)
-      </p>
     </div>
-    
-    <div style="display:flex; gap:10px; justify-content:flex-end;">
-      <button onclick="closeMoodleModal()" style="background:#999;">Batal</button>
-      <button onclick="generateMoodleCSV()" style="background:#800080;">Generate & Download</button>
-    </div>
-  </div>
-</div>
-
-<div id="errorMsg"></div>
-<div id="output"></div>
-
-<div id="successModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2001; align-items:center; justify-content:center;">
-  <div style="background:white; padding:30px; border-radius:8px; text-align:center; min-width:350px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-    <div style="font-size:50px; margin-bottom:15px;">✓</div>
-    <h2 id="successTitle" style="margin:0 0 10px 0; color:#28a745;">Berhasil!</h2>
-    <p id="successMessage" style="color:#666; font-size:11pt; margin:10px 0 20px 0; line-height:1.5;"></p>
-    <button onclick="closeSuccessModal()" style="background:#28a745; padding:10px 20px; font-size:11pt;">Tutup</button>
-  </div>
-</div>
-
-<div id="tanggalPertemuanModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; overflow-y:auto;">
-  <div style="background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; margin:20px auto;">
-    <h2 style="margin-top:0;">Set Tanggal Pertemuan</h2>
-    
-    <div style="margin-bottom:15px;">
-      <label style="display:block; font-weight:bold; margin-bottom:5px;">Tanggal Mulai:</label>
-      <input type="date" id="tanggalMulai" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
-    </div>
-    
-    <div style="margin-bottom:15px;">
-      <label style="display:block; font-weight:bold; margin-bottom:5px;">Tanggal Berakhir:</label>
-      <input type="date" id="tanggalBerakhir" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
-    </div>
-    
-    <div style="margin-bottom:15px;">
-      <label style="display:block; font-weight:bold; margin-bottom:5px;">Terapkan Ke:</label>
-      <div style="display:flex; gap:15px;">
-        <label style="display:flex; align-items:center; cursor:pointer;">
-          <input type="radio" name="applyTo" value="single" checked style="margin-right:8px;">
-          <span>Kelompok Saat Ini Saja</span>
-        </label>
-        <label style="display:flex; align-items:center; cursor:pointer;">
-          <input type="radio" name="applyTo" value="all" style="margin-right:8px;">
-          <span>Semua Kelompok</span>
+    <div id="moodlePwBox">
+      <div class="field">
+        <label>Pola password mahasiswa</label>
+        <input type="text" id="pwStudent" value="Slq@{NIM}">
+        <span class="hint">Placeholder: <code>{NIM}</code>. Harus memenuhi password policy Moodle (huruf besar, kecil, angka, simbol, min. 8 karakter).</span>
+      </div>
+      <div class="field">
+        <label>Pola password instruktur</label>
+        <input type="text" id="pwTeacher" value="Slq@{KODE}">
+        <span class="hint">Placeholder: <code>{KODE}</code> (kode instruktur).</span>
+      </div>
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" id="pwForce" checked> Wajib ganti password saat login pertama
         </label>
       </div>
     </div>
-    
-    <div style="background:#f0f0f0; padding:10px; border-radius:4px; margin-bottom:15px;">
-      <p style="margin:0 0 5px 0; font-size:10pt;"><strong>Hari Kerja yang Dihitung:</strong> Senin - Jumat</p>
-      <p style="margin:0; font-size:10pt; color:#666;">Sabtu, Minggu, dan hari libur tidak termasuk</p>
-    </div>
-    
-    <div id="hariKerjaInfo" style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px; display:none;">
-      <p id="hariKerjaText" style="margin:0; font-size:11pt; color:#1565c0;"></p>
-    </div>
-    
-    <div id="tanggalError" style="display:none; color:#d32f2f; background:#ffebee; padding:10px; border-radius:4px; margin-bottom:10px;"></div>
-    
-    <div style="display:flex; gap:10px; justify-content:flex-end;">
-      <button onclick="closeTanggalPertemuanModal()" style="background:#999;">Batal</button>
-      <button onclick="generatePertemuanDates()" style="background:#6c59c6;">Generate Jadwal</button>
+    <div id="moodleErr" class="alert"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="btnMoodleCancel">Batal</button>
+      <button class="btn violet" id="btnMoodleGo">Generate &amp; Unduh</button>
     </div>
   </div>
 </div>
 
-<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center;">
-  <div style="background:white; padding:30px; border-radius:8px; text-align:center; min-width:300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-    <h3 style="margin-top:0; color:#333;">Memproses Data...</h3>
-    
+<!-- ============ MODAL TANGGAL ============ -->
+<div id="tanggalModal" class="backdrop">
+  <div class="modal">
+    <h2>📅 Set Tanggal Pertemuan</h2>
+    <div class="row" style="align-items:flex-start;">
+      <div class="field grow"><label>Tanggal mulai</label><input type="date" id="tglMulai"></div>
+      <div class="field grow"><label>Tanggal berakhir</label><input type="date" id="tglAkhir"></div>
+    </div>
+    <div class="field">
+      <label>Tanggal libur (opsional)</label>
+      <textarea id="tglLibur" rows="3" placeholder="Satu per baris atau pisah koma, format YYYY-MM-DD"></textarea>
+    </div>
+    <div class="field">
+      <label>Terapkan ke</label>
+      <div class="radio-row">
+        <label><input type="radio" name="applyTo" value="single" checked> Kelompok saat ini</label>
+        <label><input type="radio" name="applyTo" value="all"> Semua kelompok</label>
+      </div>
+    </div>
+    <div class="info" id="tglInfo">Hari kerja dihitung Senin–Jumat, di luar tanggal libur. Jumlah pertemuan: <strong id="tglJumlah"></strong>. Tanggal tersimpan di browser ini.</div>
+    <div id="tglErr" class="alert"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="btnTglReset">Hapus tanggal</button>
+      <button class="btn ghost" id="btnTglCancel">Batal</button>
+      <button class="btn violet" id="btnTglGo">Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOADING ============ -->
+<div id="loadingOverlay" class="backdrop">
+  <div class="modal" style="max-width:320px; text-align:center;">
+    <h3 style="margin:0;">Memproses data...</h3>
     <div class="spinner"></div>
-    
-    <div style="margin:20px 0;">
-      <div style="background:#e0e0e0; height:8px; border-radius:4px; overflow:hidden;">
-        <div id="progressBar" style="background:linear-gradient(90deg, #2196F3, #00BCD4); height:100%; width:0%; transition:width 0.3s ease;"></div>
-      </div>
-    </div>
-    
-    <p id="progressText" style="color:#666; font-size:11pt; margin:10px 0; font-weight:bold;">0%</p>
-    <p style="color:#999; font-size:9pt; margin:0;">Upload data besar membutuhkan waktu, tunggu sebentar...</p>
+    <div class="progress"><div id="progressBar"></div></div>
+    <p id="progressText" style="font-weight:700; color:var(--muted); margin:10px 0 0;">0%</p>
   </div>
 </div>
+
+<div id="toasts"></div>
 
 <script>
-var dataKelompok = {};
-var kelompokList = []; // Store sorted list of kelompok
-var currentKelompokIndex = 0;
-var currentLaporanIndex = 0; // Index untuk laporan tab
-var laporanData = {}; // Store data dummy presensi
-var pertemuanDates = {}; // Store tanggal pertemuan per kelompok
-var GAS_DEPLOYMENT_ID = ""; // akan diisi dari GAS
-// --- KOLOM PERTEMUAN TAMBAHAN (lanjut otomatis: 15, 16, ...) ---
-var JUMLAH_DEFAULT = 14;
-var JUMLAH_MAX = 40;
-var jumlahPertemuan = JUMLAH_DEFAULT;
+/* ================= KONFIGURASI ================= */
+var CONFIG = {
+  GAS_URL: "https://script.google.com/macros/s/AKfycbwvdQymsajbzWT3j3s_gHx8jyPsaYHK8NXxyNShCTd0adB5TL9fYGCHRUP7V0zTpeLk/exec",
+  JUMLAH_DEFAULT: 14,
+  JUMLAH_MAX: 40,
+  MIN_HADIR_RATIO: 0.85,   // batas lulus laporan (14 pertemuan -> 12 hadir)
+  MAX_IMPORT_ROWS: 1000
+};
+var MASTER_HEADER = ["NO","NIM","NAMA","PROGRAM STUDI","KELAS","KELOMPOK","KODE INSTRUKTUR","INSTRUKTUR","LINK WHATSAPP GROUP","GROUP WHATSAPP","KOORDINATOR"];
+var TOKEN_KEY = "presensi_token", KOLOM_KEY = "presensi_jumlah_kolom", TGL_KEY = "presensi_tanggal";
 
+/* ================= STATE ================= */
+var dataKelompok = {}, kelompokList = [], presensiMap = {}, pertemuanDates = {};
+var jumlahPertemuan = CONFIG.JUMLAH_DEFAULT, currentView = "presensi", dataReady = false;
+
+/* ================= HELPER ================= */
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function safeUrl(u) { u = String(u || "").trim(); return /^https?:\/\//i.test(u) ? u : ""; }
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+function parseISO(s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || "").trim());
+  if (!m) return null;
+  var d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return isNaN(d.getTime()) ? null : d;
+}
+function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function fmtFull(s) { var d = parseISO(s); return d ? pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() : ""; }
+function fmtShort(s) { var d = parseISO(s); return d ? pad(d.getDate()) + "/" + pad(d.getMonth() + 1) : ""; }
+function normName(s) { return String(s == null ? "" : s).trim().toUpperCase().replace(/\s+/g, " "); }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+function ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+
+function toast(msg, type) {
+  var t = document.createElement("div");
+  t.className = "toast " + (type || "");
+  t.textContent = msg;
+  $("toasts").appendChild(t);
+  setTimeout(function () { t.remove(); }, 4500);
+}
+function openModal(id) { $(id).classList.add("open"); }
+function closeModal(id) { $(id).classList.remove("open"); }
+function showAlert(id, msg) { var e = $(id); e.textContent = msg; e.style.display = "block"; }
+function hideAlert(id) { $(id).style.display = "none"; }
+function setStatus(kind, text) { var c = $("statusChip"); c.className = "chip " + kind; c.textContent = text; }
+function showLoading(on) { if (on) openModal("loadingOverlay"); else closeModal("loadingOverlay"); }
+function updateProgress(p) { $("progressBar").style.width = p + "%"; $("progressText").textContent = p + "%"; }
+
+function downloadFile(name, text, mime) {
+  var blob = new Blob(["﻿" + text], { type: (mime || "text/csv") + ";charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+function csvLine(arr) {
+  return arr.map(function (c) { return '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"'; }).join(",");
+}
+function cmpNum(a, b) { return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" }); }
+
+/* ================= AKSES ================= */
+function getToken() { return ssGet(TOKEN_KEY) || ""; }
+function showGate(msg) {
+  openModal("gate");
+  if (msg) showAlert("gateErr", msg); else hideAlert("gateErr");
+  $("gateInput").value = ""; $("gateInput").focus();
+}
+function submitGate() {
+  var v = $("gateInput").value.trim();
+  if (!v) { showAlert("gateErr", "Kode akses wajib diisi."); return; }
+  ssSet(TOKEN_KEY, v); closeModal("gate"); loadData();
+}
+function logout() {
+  ssDel(TOKEN_KEY); dataReady = false; dataKelompok = {}; kelompokList = [];
+  $("output").innerHTML = ""; $("emptyState").style.display = "";
+  enableControls(false); setStatus("", "Belum masuk"); showGate();
+}
+
+/* ================= KOLOM PERTEMUAN ================= */
 function loadJumlahKolom() {
-  try {
-    var v = parseInt(localStorage.getItem("presensi_jumlah_kolom"), 10);
-    if (!isNaN(v) && v >= JUMLAH_DEFAULT && v <= JUMLAH_MAX) jumlahPertemuan = v;
-  } catch (e) {}
+  var v = parseInt(lsGet(KOLOM_KEY), 10);
+  if (!isNaN(v) && v >= CONFIG.JUMLAH_DEFAULT && v <= CONFIG.JUMLAH_MAX) jumlahPertemuan = v;
   updateInfoKolom();
 }
-
-function saveJumlahKolom() {
-  try { localStorage.setItem("presensi_jumlah_kolom", String(jumlahPertemuan)); } catch (e) {}
+function updateInfoKolom() { $("infoKolom").textContent = "Kolom: " + jumlahPertemuan; $("tglJumlah").textContent = jumlahPertemuan; }
+function ubahKolom(delta) {
+  var n = jumlahPertemuan + delta;
+  if (n > CONFIG.JUMLAH_MAX) { toast("Maksimal " + CONFIG.JUMLAH_MAX + " kolom.", "err"); return; }
+  if (n < CONFIG.JUMLAH_DEFAULT) { toast("Kolom bawaan (1-" + CONFIG.JUMLAH_DEFAULT + ") tidak bisa dihapus.", "err"); return; }
+  jumlahPertemuan = n; lsSet(KOLOM_KEY, String(n)); updateInfoKolom();
+  if ($("output").innerHTML) render();
 }
 
-function updateInfoKolom() {
-  var el = document.getElementById("infoKolom");
-  if (el) el.textContent = "Kolom: " + jumlahPertemuan;
+/* ================= TANGGAL ================= */
+function loadTanggal() {
+  try { var o = JSON.parse(lsGet(TGL_KEY) || "{}"); if (o && typeof o === "object") pertemuanDates = o; } catch (e) { pertemuanDates = {}; }
 }
-
-function refreshPresensiView() {
-  updateInfoKolom();
-  var out = document.getElementById("output");
-  if (out.querySelector(".print-container")) {
-    var k = document.getElementById("kelompok").value;
-    if (k && dataKelompok[k]) render();
+function saveTanggal() { lsSet(TGL_KEY, JSON.stringify(pertemuanDates)); }
+function parseLibur(text) {
+  var set = {}, bad = [];
+  String(text || "").split(/[\s,;]+/).forEach(function (t) {
+    if (!t) return;
+    var d = parseISO(t);
+    if (d) set[iso(d)] = true; else bad.push(t);
+  });
+  return { set: set, bad: bad };
+}
+function listHariKerja(mulai, akhir, libur) {
+  var out = [], d = new Date(mulai.getTime());
+  while (d <= akhir) {
+    var w = d.getDay();
+    if (w >= 1 && w <= 5 && !libur[iso(d)]) out.push(new Date(d.getTime()));
+    d.setDate(d.getDate() + 1);
   }
+  return out;
 }
-
-function tambahKolom() {
-  if (jumlahPertemuan >= JUMLAH_MAX) {
-    alert("Maksimal " + JUMLAH_MAX + " kolom.");
+function openTanggal() { hideAlert("tglErr"); updateInfoKolom(); openModal("tanggalModal"); }
+function generateTanggal() {
+  hideAlert("tglErr");
+  var mulai = parseISO($("tglMulai").value), akhir = parseISO($("tglAkhir").value);
+  if (!mulai || !akhir) { showAlert("tglErr", "Isi tanggal mulai dan berakhir."); return; }
+  if (mulai > akhir) { showAlert("tglErr", "Tanggal mulai tidak boleh setelah tanggal berakhir."); return; }
+  var lib = parseLibur($("tglLibur").value);
+  if (lib.bad.length) { showAlert("tglErr", "Format tanggal libur tidak valid: " + lib.bad.join(", ")); return; }
+  var hari = listHariKerja(mulai, akhir, lib.set);
+  if (hari.length < jumlahPertemuan) {
+    showAlert("tglErr", "Hari kerja (" + hari.length + ") kurang dari " + jumlahPertemuan + " pertemuan. Perluas rentang tanggal.");
     return;
   }
-  jumlahPertemuan++;
-  saveJumlahKolom();
-  refreshPresensiView();
+  var applyTo = document.querySelector('input[name="applyTo"]:checked').value;
+  var targets = applyTo === "all" ? kelompokList : [$("kelompok").value];
+  targets.forEach(function (k) {
+    if (!k) return;
+    pertemuanDates[k] = {};
+    for (var i = 0; i < jumlahPertemuan; i++) pertemuanDates[k][i + 1] = iso(hari[i]);
+  });
+  saveTanggal(); closeModal("tanggalModal");
+  toast("Tanggal pertemuan dibuat untuk " + (applyTo === "all" ? "semua kelompok" : "kelompok ini") + ".", "ok");
+  render();
+}
+function resetTanggal() {
+  var applyTo = document.querySelector('input[name="applyTo"]:checked').value;
+  if (applyTo === "all") pertemuanDates = {}; else delete pertemuanDates[$("kelompok").value];
+  saveTanggal(); closeModal("tanggalModal"); toast("Tanggal dihapus."); render();
 }
 
-function hapusKolom() {
-  if (jumlahPertemuan <= JUMLAH_DEFAULT) {
-    alert("Kolom bawaan (1-" + JUMLAH_DEFAULT + ") tidak bisa dihapus.");
-    return;
-  }
-  jumlahPertemuan--;
-  saveJumlahKolom();
-  refreshPresensiView();
-}
-
-// Fungsi hitung hari kerja (Senin-Jumat)
-function hitungHariKerja(startDate, endDate) {
-  let hariKerja = 0;
-  let currentDate = new Date(startDate);
-  const end = new Date(endDate);
-  
-  while (currentDate <= end) {
-    const dayOfWeek = currentDate.getDay();
-    // 1 = Senin, 2 = Selasa, ..., 5 = Jumat, 6 = Sabtu, 0 = Minggu
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-      hariKerja++;
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return hariKerja;
-}
-
-// Fungsi format tanggal
-function formatTanggal(date) {
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-  return date.toLocaleDateString('id-ID', options);
-}
-
-// Ambil data dari GAS doGet()
+/* ================= MUAT DATA ================= */
 function loadData() {
-  var status = document.getElementById("loadingStatus");
-  status.textContent = "Mengambil data dari server...";
-  
-  fetch(getGasUrl())
-    .then(res => res.json())
-    .then(data => {
-      if (data.error) {
-        throw new Error(data.error);
+  var token = getToken();
+  if (!token) { showGate(); return; }
+  setStatus("load", "Memuat data…");
+  enableControls(false);
+  fetch(CONFIG.GAS_URL + "?token=" + encodeURIComponent(token) + "&v=" + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (!res.success) {
+        if (res.code === "AUTH") { ssDel(TOKEN_KEY); setStatus("err", "Akses ditolak"); showGate("Kode akses salah."); return; }
+        throw new Error(res.error || "Respons tidak valid");
       }
-      processData(data.data);
-      populateDropdown();
-      status.textContent = "✓ Data berhasil dimuat";
-      
-      // Enable buttons
-      document.getElementById("kelompok").disabled = false;
-      document.getElementById("btnRender").disabled = false;
-      document.getElementById("btnPrint").disabled = false;
-      document.getElementById("btnPrintAll").disabled = false;
+      processData(res.data || []);
+      processPresensi(res.presensi || []);
+      populateSelect();
+      dataReady = true;
+      enableControls(kelompokList.length > 0);
+      setStatus("ok", "✓ " + kelompokList.length + " kelompok, " + totalPeserta() + " peserta");
+      if (kelompokList.length === 0) toast("Belum ada data peserta. Gunakan Import Data.", "err");
+      else render();
     })
-    .catch(err => {
+    .catch(function (err) {
       console.error(err);
-      showError("Gagal mengambil data: " + err.message);
-      status.textContent = "✗ Gagal memuat";
+      setStatus("err", "✗ Gagal memuat");
+      toast("Gagal mengambil data: " + err.message, "err");
     });
 }
-
-// Fungsi untuk mendapatkan GAS URL
-function getGasUrl() {
-  return "https://script.google.com/macros/s/AKfycbwvdQymsajbzWT3j3s_gHx8jyPsaYHK8NXxyNShCTd0adB5TL9fYGCHRUP7V0zTpeLk/exec?v=" + Date.now();
-}
+function totalPeserta() { var n = 0; for (var k in dataKelompok) n += dataKelompok[k].data.length; return n; }
 
 function processData(rows) {
   dataKelompok = {};
-  
-  // rows[0] adalah header, lewati
-  if (rows.length > 1) {
-    rows.slice(1).forEach(function(r) {
-      var kelompok = r[5] || ""; // Kolom F: KELOMPOK
-      if (!kelompok) return;
-      
-      var nim = r[1] || ""; // Kolom B: NIM
-      var nama = r[2] || ""; // Kolom C: NAMA
-      var kode_instruktur = r[6] || ""; // Kolom G: KODE INSTRUKTUR
-      var instruktur = r[7] || "-"; // Kolom H: INSTRUKTUR
-      var link = r[8] || "#"; // Kolom I: LINK WHATSAPP GROUP
-      
-      if (!dataKelompok[kelompok]) {
-        dataKelompok[kelompok] = {
-          kode_instruktur: kode_instruktur, // Menyimpan kode instruktur
-          instruktur: instruktur,
-          link: link,
-          data: []
-        };
-      }
-      
-      dataKelompok[kelompok].data.push({
-        nim: nim,
-        nama: nama
-      });
-    });
-  }
-  
-  // Sortir Mahasiswa berdasarkan NIM di setiap kelompok
-  for (var k in dataKelompok) {
-    dataKelompok[k].data.sort(function(a, b) {
-      return a.nim.toString().localeCompare(b.nim.toString(), undefined, {numeric: true, sensitivity: 'base'});
-    });
-  }
-}
-
-function populateDropdown() {
-  var select = document.getElementById("kelompok");
-  select.innerHTML = "";
-  
-  kelompokList = Object.keys(dataKelompok).sort();
-  kelompokList.forEach(function(k) {
-    var opt = document.createElement("option");
-    opt.value = k;
-    opt.innerHTML = k;
-    select.appendChild(opt);
-  });
-  
-  currentKelompokIndex = 0;
-  if (kelompokList.length > 0) {
-    select.value = kelompokList[0];
-  }
-  
-  // Populate laporan dropdown juga
-  populateLaporanDropdown();
-  
-  if (kelompokList.length === 0) {
-    showError("Tidak ada data kelompok ditemukan di spreadsheet");
-  }
-}
-
-// Populate Laporan Dropdown (sama seperti presensi)
-function populateLaporanDropdown() {
-  const select = document.getElementById("kelompokLaporan");
-  select.innerHTML = "";
-  
-  kelompokList.forEach(function(k) {
-    const opt = document.createElement("option");
-    opt.value = k;
-    opt.innerHTML = k;
-    select.appendChild(opt);
-  });
-  
-  currentLaporanIndex = 0;
-  if (kelompokList.length > 0) {
-    select.value = kelompokList[0];
-    document.getElementById("btnRenderLaporan").disabled = false;
-    document.getElementById("btnPrintLaporan").disabled = false;
-    document.getElementById("btnPrintAllLaporan").disabled = false;
-  }
-}
-
-function showError(msg) {
-  var errorDiv = document.getElementById("errorMsg");
-  errorDiv.innerHTML = "<div class='error'>" + msg + "</div>";
-}
-
-// Helper: Generate HTML Presensi untuk 1 Kelompok
-function generatePresensiHTML(k) {
-  var obj = dataKelompok[k];
-  var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(obj.link);
-
-  var html = "<div class='print-container'>";
-  
-  // Header Wrapper (Judul + QR)
-  html += "<div class='header-wrapper'>";
-  html += "  <div class='header-title'>";
-  html += "    <h2>Presensi Kelompok Pembelajaran Al-Qur'an</h2>";
-  html += "    <h2>Mahasiswa Angkatan 2025</h2>";
-  html += "    <div class='meta-info' style='text-align: left;'>";
-  html += "      <p><strong>Kelompok:</strong> " + k + "</p>";
-  html += "      <p><strong>Instruktur:</strong> " + obj.instruktur + "</p>";
-  html += "    </div>";
-  html += "  </div>";
-  html += "  <div class='qr-box'><img src='" + qrUrl + "'><span>SCAN GRUP WA</span></div>";
-  html += "</div>";
-
-  // Table
-  html += "<table>";
-  html += "<thead>";
-  // Baris pertama: Nomor pertemuan
-  html += "<tr>";
-  html += "<th class='col-no' rowspan='2'>No</th>";
-  html += "<th class='col-nim' rowspan='2'>NIM</th>";
-  html += "<th class='col-nama' rowspan='2'>Nama Mahasiswa</th>";
-  
-  for (var i = 1; i <= jumlahPertemuan; i++) {
-    html += "<th class='col-presensi' style='border-bottom: none;'>" + i + "</th>";
-  }
-  html += "</tr>";
-  
-  // Baris kedua: Tanggal
-  html += "<tr>";
-  for (var i = 1; i <= jumlahPertemuan; i++) {
-    html += "<th class='col-presensi' style='font-size: 7pt; background: #f0f0f0; border-top: none; text-align: left; padding-left: 2px;'>Tgl:</th>";
-  }
-  html += "</tr>";
-  html += "</thead><tbody>";
-
-  var displayData = obj.data;
-
-  displayData.forEach(function(m, index) {
-    html += "<tr>";
-    html += "<td>" + (index + 1) + "</td>";
-    html += "<td>" + m.nim + "</td>";
-    html += "<td class='col-nama'>" + m.nama + "</td>";
-    for (var j = 1; j <= jumlahPertemuan; j++) {
-      html += "<td></td>";
+  rows.slice(1).forEach(function (r) {
+    var kelompok = String(r[5] || "").trim();
+    if (!kelompok) return;
+    if (!dataKelompok[kelompok]) {
+      dataKelompok[kelompok] = {
+        kode_instruktur: String(r[6] || "").trim(),
+        instruktur: String(r[7] || "").trim() || "-",
+        link: safeUrl(r[8]),
+        data: []
+      };
     }
-    html += "</tr>";
+    dataKelompok[kelompok].data.push({ nim: String(r[1] || "").trim(), nama: String(r[2] || "").trim() });
   });
+  for (var k in dataKelompok) dataKelompok[k].data.sort(function (a, b) { return cmpNum(a.nim, b.nim); });
+}
+function processPresensi(rows) {
+  presensiMap = {};
+  rows.slice(1).forEach(function (r) {
+    var nim = String(r[0] || "").trim();
+    if (nim) presensiMap[nim] = r.slice(1).map(function (c) { return String(c == null ? "" : c).trim(); });
+  });
+}
+function populateSelect() {
+  var sel = $("kelompok"), prev = sel.value;
+  sel.innerHTML = "";
+  kelompokList = Object.keys(dataKelompok).sort(cmpNum);
+  kelompokList.forEach(function (k) {
+    var o = document.createElement("option");
+    o.value = k; o.textContent = k + " (" + dataKelompok[k].data.length + ")";
+    sel.appendChild(o);
+  });
+  if (kelompokList.length) sel.value = kelompokList.indexOf(prev) >= 0 ? prev : kelompokList[0];
+}
+function enableControls(on) {
+  ["kelompok", "btnRender", "btnPrint", "btnPrintAll", "btnPrintL", "btnPrintAllL"].forEach(function (id) { $(id).disabled = !on; });
+}
+function moveKelompok(d) {
+  if (!kelompokList.length) return;
+  var i = kelompokList.indexOf($("kelompok").value);
+  i = (i + d + kelompokList.length) % kelompokList.length;
+  $("kelompok").value = kelompokList[i];
+  render();
+}
 
-  html += "</tbody></table>";
+/* ================= RENDER ================= */
+function isHadir(v) { return /^(h|hadir|1|✓|✔|p|present|y|ya)$/i.test(String(v || "").trim()); }
 
-  // Footer
-  html += "<div class='footer'>";
-  html += "<span>Dicetak: " + new Date().toLocaleDateString('id-ID') + "</span>";
-  html += "<span><strong>Unit Pelaksana: BPP-MKWK UMM</strong></span>";
-  html += "</div>";
+function genPresensi(k) {
+  var obj = dataKelompok[k], n = jumlahPertemuan, tg = pertemuanDates[k] || {};
+  var h = "<div class='sheet" + (n > 20 ? " dense" : "") + "'>";
+  h += "<div class='head'><div class='head-title'>";
+  h += "<h2>Presensi Kelompok Pembelajaran Al-Qur'an</h2><h2>Mahasiswa Angkatan 2025</h2>";
+  h += "<div class='meta'><p><strong>Kelompok:</strong> " + esc(k) + "</p><p><strong>Instruktur:</strong> " + esc(obj.instruktur) + "</p></div></div>";
+  if (obj.link) {
+    var qr = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(obj.link);
+    h += "<div class='qr'><img src='" + esc(qr) + "' alt='QR'><span>SCAN GRUP WA</span></div>";
+  }
+  h += "</div><table><thead><tr><th class='c-no' rowspan='2'>No</th><th class='c-nim' rowspan='2'>NIM</th><th class='c-nama' rowspan='2'>Nama Mahasiswa</th>";
+  for (var i = 1; i <= n; i++) h += "<th class='c-p' style='border-bottom:none;'>" + i + "</th>";
+  h += "</tr><tr>";
+  for (i = 1; i <= n; i++) {
+    var t = fmtShort(tg[i]);
+    h += "<th class='c-p tgl' style='border-top:none;background:#f0f0f0;'>" + (t ? t : "Tgl:") + "</th>";
+  }
+  h += "</tr></thead><tbody>";
+  obj.data.forEach(function (m, idx) {
+    h += "<tr><td>" + (idx + 1) + "</td><td>" + esc(m.nim) + "</td><td class='c-nama'>" + esc(m.nama) + "</td>";
+    for (var j = 0; j < n; j++) h += "<td></td>";
+    h += "</tr>";
+  });
+  h += "</tbody></table><div class='footer'><span>Dicetak: " + new Date().toLocaleDateString("id-ID") + "</span>";
+  h += "<span><strong>Unit Pelaksana: BPP-MKWK UMM</strong></span></div></div>";
+  return h;
+}
 
-  html += "</div>";
-  return html;
+function genLaporan(k, withNotice) {
+  var obj = dataKelompok[k], n = jumlahPertemuan, tg = pertemuanDates[k] || {};
+  var minHadir = Math.ceil(n * CONFIG.MIN_HADIR_RATIO);
+  var now = new Date();
+  var h = "";
+  if (withNotice && Object.keys(presensiMap).length === 0) {
+    h += "<div class='notice'>⚠️ Belum ada data kehadiran (sheet &quot;presensi&quot;). Kolom kehadiran dikosongkan. Gunakan <strong>Import Presensi</strong>.</div>";
+  }
+  h += "<div class='sheet" + (n > 20 ? " dense" : "") + "'>";
+  h += "<h2 style='text-align:center;margin:0 0 3px;font-size:12pt;'>LAPORAN PRESENSI KELOMPOK PEMBELAJARAN AL-QUR'AN</h2>";
+  h += "<p class='sub'>Kelompok: " + esc(k) + " | Instruktur: " + esc(obj.instruktur) + "</p>";
+  h += "<p style='text-align:right;margin:0 0 6px;font-size:8pt;color:#555;'>Dicetak: " + now.toLocaleDateString("id-ID") + " " + now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + "</p>";
+  h += "<table><thead><tr><th class='c-no'>No</th><th class='c-nim'>NIM</th><th class='c-nama'>Nama Peserta</th>";
+  for (var i = 1; i <= n; i++) {
+    var t = fmtShort(tg[i]);
+    h += "<th class='c-p'>" + i + (t ? "<br><span class='tgl'>" + t + "</span>" : "") + "</th>";
+  }
+  h += "<th class='c-total'>Total</th></tr></thead><tbody>";
+  obj.data.forEach(function (m, idx) {
+    var pr = presensiMap[m.nim], total = 0;
+    h += "<tr><td>" + (idx + 1) + "</td><td>" + esc(m.nim) + "</td><td class='c-nama'>" + esc(m.nama) + "</td>";
+    for (var j = 0; j < n; j++) {
+      var v = pr ? (pr[j] || "") : "";
+      if (v === "") h += "<td></td>";
+      else if (isHadir(v)) { total++; h += "<td><span class='mk-h'>✅</span></td>"; }
+      else h += "<td><span class='mk-a'>❌</span></td>";
+    }
+    if (!pr) h += "<td class='c-total' style='background:#f0f0f0;'>-</td>";
+    else h += "<td class='c-total' style='background:#f0f0f0;'><span class='" + (total >= minHadir ? "mk-h" : "mk-a") + "'>" + total + "</span></td>";
+    h += "</tr>";
+  });
+  h += "</tbody></table><div class='foot-c'>Unit Pelaksana: BPP-MKWK UMM<br>Batas minimal hadir: " + minHadir + " dari " + n + " pertemuan<br>Sumber Data: https://sim-slq.umm.ac.id/mod/attendance/</div></div>";
+  return h;
 }
 
 function render() {
-  var k = document.getElementById("kelompok").value;
+  var k = $("kelompok").value;
   if (!k || !dataKelompok[k]) return;
-  document.getElementById("output").innerHTML = generatePresensiHTML(k);
+  $("output").innerHTML = currentView === "presensi" ? genPresensi(k) : genLaporan(k, true);
+  $("emptyState").style.display = "none";
 }
 
-// FITUR BARU: CETAK SEMUA PRESENSI
-function printAllPresensi() {
-  if (kelompokList.length === 0) return;
-  var status = document.getElementById("loadingStatus");
-  status.textContent = "Menyiapkan data cetak seluruh kelompok...";
-  
-  let fullHtml = "";
-  kelompokList.forEach(k => {
-    fullHtml += generatePresensiHTML(k);
-  });
-  
-  document.getElementById("output").innerHTML = fullHtml;
-  
-  // Beri sedikit jeda agar DOM ter-render sebelum memanggil window.print
-  setTimeout(() => {
-    status.textContent = "✓ Data berhasil dimuat";
+function waitImages(root, timeout) {
+  var imgs = [].slice.call(root.querySelectorAll("img")).filter(function (i) { return !i.complete; });
+  if (!imgs.length) return Promise.resolve();
+  return Promise.race([
+    Promise.all(imgs.map(function (i) { return new Promise(function (r) { i.onload = i.onerror = r; }); })),
+    new Promise(function (r) { setTimeout(r, timeout || 12000); })
+  ]);
+}
+function printCurrent() {
+  if (!$("output").innerHTML) render();
+  waitImages($("output")).then(function () { window.print(); });
+}
+function printAll() {
+  if (!kelompokList.length) return;
+  var gen = currentView === "presensi" ? genPresensi : function (k) { return genLaporan(k, false); };
+  setStatus("load", "Menyiapkan cetak…");
+  $("output").innerHTML = kelompokList.map(gen).join("");
+  waitImages($("output")).then(function () {
+    setStatus("ok", "✓ " + kelompokList.length + " kelompok, " + totalPeserta() + " peserta");
     window.print();
-    render(); // Mengembalikan tampilan output ke mode single / satu kelompok saja
-  }, 800);
+    render();
+  });
 }
 
-// Import Dialog Functions
-function openImportDialog() {
-  document.getElementById("importModal").style.display = "flex";
-  document.getElementById("importError").style.display = "none";
-  document.getElementById("importError").textContent = "";
+function switchTab(view) {
+  currentView = view;
+  $("tabBtn-presensi").classList.toggle("active", view === "presensi");
+  $("tabBtn-laporan").classList.toggle("active", view === "laporan");
+  $("panel-presensi").style.display = view === "presensi" ? "" : "none";
+  $("panel-laporan").style.display = view === "laporan" ? "" : "none";
+  if (dataReady) render();
 }
 
-function closeImportDialog() {
-  document.getElementById("importModal").style.display = "none";
-  document.getElementById("csvFile").value = "";
-  document.getElementById("pasteData").value = "";
+/* ================= IMPORT ================= */
+function currentJenis() { return $("importJenis").value; }
+function updateTemplateHint() {
+  $("templateHint").textContent = currentJenis() === "peserta"
+    ? "Kolom: " + MASTER_HEADER.join(", ") + ". Format kolom NIM sebagai teks."
+    : "Kolom: NIM, P1, P2, … (maks 40 pertemuan). Isi H untuk hadir, A/kosong untuk tidak hadir.";
 }
+function openImport(jenis) {
+  if (jenis) $("importJenis").value = jenis;
+  updateTemplateHint(); hideAlert("importError");
+  openModal("importModal");
+}
+function closeImport() { closeModal("importModal"); $("importFile").value = ""; $("pasteData").value = ""; }
 
 function downloadTemplate() {
-  // Data template
-  const templateData = [
-    ["NO", "NIM", "NAMA", "PROGRAM STUDI", "KELAS", "KELOMPOK", "KODE INSTRUKTUR", "INSTRUKTUR", "LINK WHATSAPP GROUP", "GROUP WHATSAPP", "KOORDINATOR"],
-    ["1", "202510050110001", "YOGI ARDIANTAMA", "Ilmu Pemerintahan", "A", "Ilmu Pemerintahan - 01", "sholihah24", "Sholihah Nashir, S.Pd.I.", "https://chat.whatsapp.com/Iv9Dk37iyIWKC38o15m3Vd?mode=gi_t", "Klik to Join", ""],
-    ["2", "202510050110002", "AHMAD RAZZAQ", "Ilmu Pemerintahan", "A", "Ilmu Pemerintahan - 01", "sholihah24", "Sholihah Nashir, S.Pd.I.", "https://chat.whatsapp.com/Iv9Dk37iyIWKC38o15m3Vd?mode=gi_t", "Klik to Join", ""],
-    ["3", "202510050110003", "SITI NURHALIZA", "Ilmu Pemerintahan", "B", "Ilmu Pemerintahan - 02", "amin_dev", "Amin Ridho, S.Pd.", "https://chat.whatsapp.com/L8aD9qWx2pL4jK5m9zR3pO?mode=gi_t", "Klik to Join", ""],
-    ["4", "202510050110004", "BUDI SANTOSO", "Ilmu Pemerintahan", "B", "Ilmu Pemerintahan - 02", "amin_dev", "Amin Ridho, S.Pd.", "https://chat.whatsapp.com/L8aD9qWx2pL4jK5m9zR3pO?mode=gi_t", "Klik to Join", ""],
-    ["5", "202510050110005", "DEWI LESTARI", "Biologi", "A", "Biologi - 01", "fajar_bio", "Dr. Fajar Sidiq", "https://chat.whatsapp.com/K7bV4sT8xM2nP5qR1wY3zC?mode=gi_t", "Klik to Join", ""]
-  ];
-  
-  // Convert ke CSV
-  let csvContent = "data:text/csv;charset=utf-8,";
-  templateData.forEach(row => {
-    csvContent += row.map(cell => {
-      // Escape quotes dan wrap dengan quotes jika ada comma/quote
-      const escaped = String(cell).replace(/"/g, '""');
-      return '"' + escaped + '"';
-    }).join(",") + "\n";
-  });
-  
-  // Download
-  const link = document.createElement("a");
-  link.setAttribute("href", encodeURI(csvContent));
-  link.setAttribute("download", "template_import.csv");
-  link.click();
-}
-
-function importDataAction() {
-  const importType = document.querySelector('input[name="importType"]:checked').value;
-  let csvText = "";
-  
-  if (importType === "csv") {
-    const file = document.getElementById("csvFile").files[0];
-    if (!file) {
-      showImportError("Pilih file CSV terlebih dahulu");
-      return;
-    }
-    
-    showLoading(true);
-    updateProgress(5);
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      updateProgress(20);
-      csvText = e.target.result;
-      processImport(csvText);
-    };
-    reader.onerror = function() {
-      showLoading(false);
-      showImportError("Gagal membaca file");
-    };
-    reader.readAsText(file);
+  var rows;
+  if (currentJenis() === "peserta") {
+    rows = [MASTER_HEADER,
+      ["1","202510050110001","YOGI ARDIANTAMA","Ilmu Pemerintahan","A","Ilmu Pemerintahan - 01","sholihah24","Sholihah Nashir, S.Pd.I.","https://chat.whatsapp.com/Iv9Dk37iyIWKC38o15m3Vd?mode=gi_t","Klik to Join",""],
+      ["2","202510050110002","AHMAD RAZZAQ","Ilmu Pemerintahan","A","Ilmu Pemerintahan - 01","sholihah24","Sholihah Nashir, S.Pd.I.","https://chat.whatsapp.com/Iv9Dk37iyIWKC38o15m3Vd?mode=gi_t","Klik to Join",""],
+      ["3","202510050110003","SITI NURHALIZA","Ilmu Pemerintahan","B","Ilmu Pemerintahan - 02","amin_dev","Amin Ridho, S.Pd.","https://chat.whatsapp.com/L8aD9qWx2pL4jK5m9zR3pO?mode=gi_t","Klik to Join",""]];
+    downloadFile("template_peserta.csv", rows.map(csvLine).join("\r\n") + "\r\n");
   } else {
-    csvText = document.getElementById("pasteData").value;
-    if (!csvText.trim()) {
-      showImportError("Paste data terlebih dahulu");
-      return;
-    }
-    showLoading(true);
-    updateProgress(5);
-    setTimeout(() => processImport(csvText), 100);
+    var head = ["NIM"], r1 = ["202510050110001"], r2 = ["202510050110002"];
+    for (var i = 1; i <= CONFIG.JUMLAH_DEFAULT; i++) { head.push("P" + i); r1.push("H"); r2.push(i % 5 === 0 ? "A" : "H"); }
+    downloadFile("template_presensi.csv", [head, r1, r2].map(csvLine).join("\r\n") + "\r\n");
   }
 }
 
-function processImport(csvText) {
-  try {
-    // Parse CSV
-    updateProgress(10);
-    const rows = parseCSV(csvText);
-    updateProgress(30);
-    
-    if (rows.length < 1) {
-      throw new Error("File kosong atau format tidak valid");
-    }
-    
-    // Validasi header
-    updateProgress(40);
-    const header = rows[0];
-    if (header.length < 11) {
-      throw new Error("Format tidak valid. Harus ada 11 kolom:\n1. NO\n2. NIM\n3. NAMA\n4. PROGRAM STUDI\n5. KELAS\n6. KELOMPOK\n7. KODE INSTRUKTUR\n8. INSTRUKTUR\n9. LINK WHATSAPP GROUP\n10. GROUP WHATSAPP\n11. KOORDINATOR");
-    }
-    
-    // Validasi data tidak terlalu besar
-    updateProgress(50);
-    if (rows.length > 1001) {
-      throw new Error("Data terlalu besar (max 1000 baris). Saat ini: " + (rows.length - 1) + " baris");
-    }
-    
-    updateProgress(60);
-    // Kirim ke GAS
-    sendImportToGAS(rows);
-  } catch (error) {
-    showLoading(false);
-    showImportError(error.message);
+function parseDelimited(text) {
+  text = String(text).replace(/^﻿/, "");
+  var first = text.split(/\r\n|\n|\r/)[0] || "";
+  var delim = ",", best = 0;
+  ["\t", ";", ","].forEach(function (c) {
+    var n = first.split(c).length - 1;
+    if (n > best) { best = n; delim = c; }
+  });
+  var rows = [], row = [], cell = "", q = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); cell = ""; rows.push(row); row = [];
+    } else cell += ch;
   }
-}
-
-function parseCSV(csvText) {
-  const rows = [];
-  let currentRow = [];
-  let currentCell = "";
-  let insideQuotes = false;
-  
-  for (let i = 0; i < csvText.length; i++) {
-    const char = csvText[i];
-    const nextChar = csvText[i + 1];
-    
-    if (char === '"') {
-      if (insideQuotes && nextChar === '"') {
-        currentCell += '"';
-        i++;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-    } else if (char === '\t' && !insideQuotes) {
-      currentRow.push(currentCell.trim());
-      currentCell = "";
-    } else if ((char === '\n' || char === '\r') && !insideQuotes) {
-      if (currentCell || currentRow.length > 0) {
-        currentRow.push(currentCell.trim());
-        if (currentRow.some(c => c !== "")) {
-          rows.push(currentRow);
-        }
-        currentRow = [];
-        currentCell = "";
-      }
-      if (char === '\r' && nextChar === '\n') i++;
-    } else {
-      currentCell += char;
-    }
-  }
-  
-  if (currentCell || currentRow.length > 0) {
-    currentRow.push(currentCell.trim());
-    if (currentRow.some(c => c !== "")) {
-      rows.push(currentRow);
-    }
-  }
-  
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
   return rows;
 }
-
-function sendImportToGAS(rows) {
-  showLoading(true);
-  updateProgress(70);
-  
-  const gasUrl = "https://script.google.com/macros/s/AKfycbwvdQymsajbzWT3j3s_gHx8jyPsaYHK8NXxyNShCTd0adB5TL9fYGCHRUP7V0zTpeLk/exec";
-  const totalRows = rows.length - 1; // exclude header
-  
-  // Simulasi smooth progress increment saat waiting (tidak akurat, hanya visual)
-  const progressInterval = setInterval(() => {
-    const currentProgress = parseInt(document.getElementById("progressBar").style.width);
-    if (currentProgress < 90) {
-      updateProgress(currentProgress + 2);
-    }
-  }, 200);
-  
-  fetch(gasUrl, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "import",
-      rows: rows
-    })
-  })
-  .then(res => {
-    clearInterval(progressInterval);
-    return res.json();
-  })
-  .then(data => {
-    if (data.success) {
-      // Langsung ke 95% saat response
-      updateProgress(95);
-      
-      setTimeout(() => {
-        updateProgress(100);
-        setTimeout(() => {
-          showLoading(false);
-          closeImportDialog();
-          
-          // Show success modal
-          showSuccessModal(
-            "Data Berhasil Diimport!",
-            data.message + "\n\nHalaman akan dimuat ulang dalam 2 detik..."
-          );
-          
-          // Auto refresh setelah 2 detik
-          setTimeout(() => {
-            closeSuccessModal();
-            location.reload();
-          }, 2000);
-        }, 300);
-      }, 200);
+function readFileRows(f) {
+  return new Promise(function (resolve, reject) {
+    var ext = (f.name.split(".").pop() || "").toLowerCase();
+    var r = new FileReader();
+    r.onerror = function () { reject(new Error("Gagal membaca file")); };
+    if (ext === "xlsx" || ext === "xls") {
+      if (typeof XLSX === "undefined") return reject(new Error("Library Excel gagal dimuat. Gunakan file CSV."));
+      r.onload = function (e) {
+        try {
+          var wb = XLSX.read(e.target.result, { type: "array" });
+          resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" }));
+        } catch (x) { reject(x); }
+      };
+      r.readAsArrayBuffer(f);
     } else {
-      clearInterval(progressInterval);
-      showLoading(false);
-      showImportError(data.message || "Import gagal");
+      r.onload = function (e) { resolve(parseDelimited(e.target.result)); };
+      r.readAsText(f);
     }
-  })
-  .catch(err => {
-    clearInterval(progressInterval);
-    showLoading(false);
-    showImportError("Error: " + err.message);
   });
 }
-
-function showImportError(msg) {
-  const errorDiv = document.getElementById("importError");
-  errorDiv.textContent = msg;
-  errorDiv.style.display = "block";
-}
-
-function showLoading(show = true) {
-  document.getElementById("loadingOverlay").style.display = show ? "flex" : "none";
-}
-
-function updateProgress(percent) {
-  document.getElementById("progressBar").style.width = percent + "%";
-  document.getElementById("progressText").textContent = percent + "%";
-}
-
-// Navigation Kelompok
-function prevKelompok() {
-  if (kelompokList.length === 0) return;
-  currentKelompokIndex = (currentKelompokIndex - 1 + kelompokList.length) % kelompokList.length;
-  document.getElementById("kelompok").value = kelompokList[currentKelompokIndex];
-  render();
-}
-
-function nextKelompok() {
-  if (kelompokList.length === 0) return;
-  currentKelompokIndex = (currentKelompokIndex + 1) % kelompokList.length;
-  document.getElementById("kelompok").value = kelompokList[currentKelompokIndex];
-  render();
-}
-
-// Success Modal
-function showSuccessModal(title, message) {
-  document.getElementById("successTitle").textContent = title;
-  document.getElementById("successMessage").textContent = message;
-  document.getElementById("successModal").style.display = "flex";
-}
-
-function closeSuccessModal() {
-  document.getElementById("successModal").style.display = "none";
-}
-
-// Modal Tanggal Pertemuan
-function openTanggalPertemuanModal() {
-  document.getElementById("tanggalPertemuanModal").style.display = "flex";
-  document.getElementById("tanggalError").style.display = "none";
-  document.getElementById("hariKerjaInfo").style.display = "none";
-}
-
-function closeTanggalPertemuanModal() {
-  document.getElementById("tanggalPertemuanModal").style.display = "none";
-}
-
-function generatePertemuanDates() {
-  const tanggalMulai = document.getElementById("tanggalMulai").value;
-  const tanggalBerakhir = document.getElementById("tanggalBerakhir").value;
-  const applyTo = document.querySelector('input[name="applyTo"]:checked').value;
-  const errorDiv = document.getElementById("tanggalError");
-  const infoDiv = document.getElementById("hariKerjaInfo");
-  const infoText = document.getElementById("hariKerjaText");
-  
-  errorDiv.style.display = "none";
-  infoDiv.style.display = "none";
-  
-  // Validasi
-  if (!tanggalMulai || !tanggalBerakhir) {
-    errorDiv.textContent = "Mohon isi tanggal mulai dan tanggal berakhir";
-    errorDiv.style.display = "block";
-    return;
-  }
-  
-  const mulai = new Date(tanggalMulai);
-  const berakhir = new Date(tanggalBerakhir);
-  
-  if (mulai > berakhir) {
-    errorDiv.textContent = "Tanggal mulai tidak boleh lebih besar dari tanggal berakhir";
-    errorDiv.style.display = "block";
-    return;
-  }
-  
-  // Hitung hari kerja
-  const hariKerja = hitungHariKerja(mulai, berakhir);
-  
-  if (hariKerja < 14) {
-    errorDiv.textContent = "Jumlah hari kerja (" + hariKerja + ") kurang dari 14 pertemuan. Silakan perluas tanggal.";
-    errorDiv.style.display = "block";
-    return;
-  }
-  
-  // Tampil info
-  infoText.textContent = "✓ Total hari kerja: " + hariKerja + " hari | Periode: " + formatTanggal(mulai) + " s/d " + formatTanggal(berakhir);
-  infoDiv.style.display = "block";
-  
-  // Generate tanggal pertemuan (ambil 14 hari kerja pertama)
-  const pertemuanList = [];
-  let hitung = 0;
-  let currentDate = new Date(mulai);
-  
-  while (hitung < 14 && currentDate <= berakhir) {
-    const dayOfWeek = currentDate.getDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-      pertemuanList.push(new Date(currentDate));
-      hitung++;
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  // Tentukan kelompok mana yang akan di-update
-  let targetKelompok = [];
-  if (applyTo === "single") {
-    targetKelompok = [document.getElementById("kelompokLaporan").value];
+function importAction() {
+  hideAlert("importError");
+  var jenis = currentJenis();
+  var src = document.querySelector('input[name="importSrc"]:checked').value;
+  if (src === "file") {
+    var f = $("importFile").files[0];
+    if (!f) return showAlert("importError", "Pilih file terlebih dahulu.");
+    showLoading(true); updateProgress(10);
+    readFileRows(f).then(function (rows) { processImport(rows, jenis); })
+      .catch(function (e) { showLoading(false); showAlert("importError", e.message); });
   } else {
-    targetKelompok = kelompokList;
+    var t = $("pasteData").value;
+    if (!t.trim()) return showAlert("importError", "Paste data terlebih dahulu.");
+    showLoading(true); updateProgress(10);
+    setTimeout(function () { processImport(parseDelimited(t), jenis); }, 50);
   }
-  
-  // Simpan tanggal pertemuan untuk setiap kelompok target
-  targetKelompok.forEach(kelompok => {
-    if (!pertemuanDates[kelompok]) {
-      pertemuanDates[kelompok] = {};
-    }
-    
-    pertemuanList.forEach((date, idx) => {
-      pertemuanDates[kelompok][idx + 1] = formatTanggal(date);
-    });
-  });
-  
-  // Auto close modal dan render laporan
-  setTimeout(() => {
-    closeTanggalPertemuanModal();
-    const target = applyTo === "single" ? "kelompok saat ini" : "semua kelompok";
-    alert("✓ Jadwal " + hariKerja + " hari kerja berhasil dibuat untuk " + target + "!");
-    renderLaporan();
-  }, 500);
 }
-
-// Tab Switching
-function switchTab(tabName) {
-  // Hide all tabs
-  const tabs = document.querySelectorAll('.tab-content');
-  tabs.forEach(tab => tab.style.display = 'none');
-  
-  // Show selected tab
-  document.getElementById(tabName).style.display = 'block';
-  
-  // Update button styles
-  document.getElementById('tabBtn-presensi').style.background = tabName === 'tab-presensi' ? '#007bff' : '#f0f0f0';
-  document.getElementById('tabBtn-presensi').style.color = tabName === 'tab-presensi' ? 'white' : '#333';
-  document.getElementById('tabBtn-laporan').style.background = tabName === 'tab-laporan' ? '#17a2b8' : '#f0f0f0';
-  document.getElementById('tabBtn-laporan').style.color = tabName === 'tab-laporan' ? 'white' : '#333';
-}
-
-// Navigation Laporan
-function prevKelompokLaporan() {
-  if (kelompokList.length === 0) return;
-  currentLaporanIndex = (currentLaporanIndex - 1 + kelompokList.length) % kelompokList.length;
-  document.getElementById("kelompokLaporan").value = kelompokList[currentLaporanIndex];
-  renderLaporan();
-}
-
-function nextKelompokLaporan() {
-  if (kelompokList.length === 0) return;
-  currentLaporanIndex = (currentLaporanIndex + 1) % kelompokList.length;
-  document.getElementById("kelompokLaporan").value = kelompokList[currentLaporanIndex];
-  renderLaporan();
-}
-
-// Generate dummy presensi data dengan target realistic
-function generateDummyPresensi(nim) {
-  if (!laporanData[nim]) {
-    // Target random: 12, 13, atau 14
-    const target = [12, 13, 14][Math.floor(Math.random() * 3)];
-    
-    // Generate 14 pertemuan dengan jaminan total == target
-    const presensi = [];
-    let hitung = 0;
-    
-    // Acak posisi kehadiran sesuai target
-    for (let i = 0; i < 14; i++) {
-      const sisaPertunjukan = 14 - i;
-      const sisaHadir = target - hitung;
-      
-      if (sisaHadir === sisaPertunjukan) {
-        presensi[i] = true;
-        hitung++;
-      } else if (sisaHadir === 0) {
-        presensi[i] = false;
-      } else {
-        const chance = sisaHadir / sisaPertunjukan;
-        presensi[i] = Math.random() < chance;
-        if (presensi[i]) hitung++;
+function processImport(rows, jenis) {
+  try {
+    rows = rows.map(function (r) { return r.map(function (c) { return String(c == null ? "" : c).trim(); }); })
+      .filter(function (r) { return r.some(function (c) { return c !== ""; }); });
+    if (rows.length < 2) throw new Error("File kosong atau hanya berisi header.");
+    if (rows.length - 1 > CONFIG.MAX_IMPORT_ROWS) throw new Error("Data terlalu besar (maks " + CONFIG.MAX_IMPORT_ROWS + " baris). Saat ini: " + (rows.length - 1));
+    updateProgress(30);
+    var errors = [];
+    if (jenis === "peserta") {
+      var head = rows[0].map(normName);
+      for (var i = 0; i < MASTER_HEADER.length; i++) {
+        if (head[i] !== MASTER_HEADER[i]) throw new Error("Kolom ke-" + (i + 1) + " harus '" + MASTER_HEADER[i] + "' (ditemukan '" + (head[i] || "kosong") + "').");
       }
-    }
-    
-    laporanData[nim] = {
-      target: target,
-      presensi: presensi,
-      total: hitung
-    };
-  }
-  return laporanData[nim];
-}
-
-// Hitung rank untuk setiap pertemuan
-function getPresenceStatus(nim, pertemuan, threshold) {
-  const presensiData = generateDummyPresensi(nim);
-  let totalHadir = 0;
-  for (let i = 0; i < pertemuan; i++) {
-    if (presensiData[i]) totalHadir++;
-  }
-  return totalHadir >= threshold ? '✅' : '❌';
-}
-
-// Helper: Generate HTML Laporan untuk 1 Kelompok
-function generateLaporanHTML(k) {
-  const obj = dataKelompok[k];
-  const peserta = obj.data;
-  
-  // Get current date and time
-  const now = new Date();
-  const tanggal = now.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  
-  // Style page-break-after: always untuk memastikan tiap kelompok mulai di kertas baru
-  let html = '<div class="laporan-container" style="page-break-after: always;">';
-  
-  // Header Sederhana
-  html += '<h2 style="text-align:center; margin:0 0 3px 0; font-size:12pt;">LAPORAN PRESENSI KELOMPOK PEMBELAJARAN AL-QUR\'AN</h2>';
-  html += '<p style="text-align:center; margin:0 0 10px 0; font-size:9pt; color:#666;">Kelompok: ' + k + ' | Instruktur: ' + obj.instruktur + '</p>';
-  html += '<p style="text-align:right; margin:0 0 10px 0; font-size:8pt; color:#666;">Dicetak: ' + tanggal + ' ' + jam + '</p>';
-  
-  html += '<table class="laporan-table">';
-  html += '<thead>';
-  html += '<tr>';
-  html += '<th class="col-no">No</th>';
-  html += '<th class="col-nim">NIM</th>';
-  html += '<th class="col-nama">Nama Peserta</th>';
-  
-  // Header pertemuan dengan tanggal
-  const pertemuanTanggal = pertemuanDates[k] || {};
-  for (let i = 1; i <= 14; i++) {
-    const tglPert = pertemuanTanggal[i] ? '<br><span style="font-size:7pt;">' + pertemuanTanggal[i] + '</span>' : '';
-    html += '<th class="col-pertemuan">' + i + tglPert + '</th>';
-  }
-  
-  html += '<th class="col-total">Total</th>';
-  html += '</tr>';
-  html += '</thead>';
-  html += '<tbody>';
-  
-  // Data peserta
-  peserta.forEach((m, idx) => {
-    const data = generateDummyPresensi(m.nim);
-    const presensi = data.presensi;
-    const total = data.total;
-    
-    html += '<tr>';
-    html += '<td>' + (idx + 1) + '</td>';
-    html += '<td>' + m.nim + '</td>';
-    html += '<td class="col-nama">' + m.nama + '</td>';
-    
-    // Tampil hadir/absen per pertemuan
-    presensi.forEach((hadir) => {
-      const status = hadir ? '<span class="mark-hadir">✅</span>' : '<span class="mark-absen">❌</span>';
-      html += '<td>' + status + '</td>';
-    });
-    
-    // Total hadir
-    const statusTotal = total >= 12 ? '<span class="mark-hadir">' + total + '</span>' : '<span class="mark-absen">' + total + '</span>';
-    html += '<td class="col-total" style="background:#f0f0f0;">' + statusTotal + '</td>';
-    html += '</tr>';
-  });
-  
-  html += '</tbody>';
-  html += '</table>';
-  
-  // Footer
-  html += '<div style="margin-top:10px; font-size:8pt; text-align:center; color:#666;">';
-  html += 'Unit Pelaksana: BPP-MKWK UMM<br>';
-  html += 'Sumber Data: https://sim-slq.umm.ac.id/mod/attendance/';
-  html += '</div>';
-  
-  html += '</div>';
-  return html;
-}
-
-// Render Laporan Single
-function renderLaporan() {
-  const k = document.getElementById("kelompokLaporan").value;
-  if (!k || !dataKelompok[k]) return;
-  document.getElementById("output").innerHTML = generateLaporanHTML(k);
-}
-
-// FITUR BARU: CETAK SEMUA LAPORAN
-function printAllLaporan() {
-  if (kelompokList.length === 0) return;
-  
-  let fullHtml = "";
-  kelompokList.forEach(k => {
-    fullHtml += generateLaporanHTML(k);
-  });
-  
-  document.getElementById("output").innerHTML = fullHtml;
-  
-  setTimeout(() => {
-    window.print();
-    renderLaporan(); // Mengembalikan tampilan output ke mode single
-  }, 800);
-}
-
-// --- FUNGSI EXPORT MOODLE CSV ---
-function openMoodleModal() {
-  if (Object.keys(dataKelompok).length === 0) {
-    alert("Data belum dimuat atau kosong. Silakan tunggu data termuat atau import data terlebih dahulu.");
-    return;
-  }
-  document.getElementById("moodleModal").style.display = "flex";
-  document.getElementById("moodleCourseInput").value = ""; // Reset input
-  // Default checkbox dicheck
-  document.getElementById("moodleCreateAccount").checked = true;
-}
-
-function closeMoodleModal() {
-  document.getElementById("moodleModal").style.display = "none";
-}
-
-function generateMoodleCSV() {
-  const course1 = document.getElementById("moodleCourseInput").value.trim();
-  const includeProfile = document.getElementById("moodleCreateAccount").checked;
-  
-  if (!course1) {
-    alert("Nama Course (course1) tidak boleh kosong!");
-    document.getElementById("moodleCourseInput").focus();
-    return;
-  }
-
-  // Siapkan Array untuk baris CSV (Header)
-  const csvRows = [];
-  
-  if (includeProfile) {
-    csvRows.push(["username", "firstname", "lastname", "email", "password", "course1", "group1", "role1"]);
-  } else {
-    csvRows.push(["username", "course1", "group1", "role1"]);
-  }
-
-  for (const kelompok in dataKelompok) {
-    const info = dataKelompok[kelompok];
-    
-    if (info.kode_instruktur && info.kode_instruktur.trim() !== "") {
-      if (includeProfile) {
-        let parts = info.instruktur.trim().split(" ");
-        let fname = parts[0] || info.kode_instruktur;
-        let lname = parts.slice(1).join(" ") || "-";
-        let email = info.kode_instruktur + "@umm.ac.id";
-        csvRows.push([info.kode_instruktur, fname, lname, email, "", course1, kelompok, "teacher"]);
-      } else {
-        csvRows.push([info.kode_instruktur, course1, kelompok, "teacher"]);
-      }
-    }
-
-    info.data.forEach(mhs => {
-      if (mhs.nim && mhs.nim.trim() !== "") {
-        if (includeProfile) {
-          let parts = mhs.nama.trim().split(" ");
-          let fname = parts[0] || mhs.nim;
-          let lname = parts.slice(1).join(" ") || "-";
-          let email = mhs.nim + "@webmail.umm.ac.id";
-          let password = mhs.nim;
-          csvRows.push([mhs.nim, fname, lname, email, password, course1, kelompok, "student"]);
-        } else {
-          csvRows.push([mhs.nim, course1, kelompok, "student"]);
+      rows = rows.map(function (r, idx) {
+        var o = []; for (var c = 0; c < MASTER_HEADER.length; c++) o.push(r[c] || "");
+        if (idx > 0) {
+          var line = idx + 1;
+          if (!/^[A-Za-z0-9._-]+$/.test(o[1])) errors.push("Baris " + line + ": NIM tidak valid ('" + o[1] + "'). Pastikan kolom NIM berformat teks.");
+          if (!o[2]) errors.push("Baris " + line + ": NAMA kosong");
+          if (!o[5]) errors.push("Baris " + line + ": KELOMPOK kosong");
         }
+        return o;
+      });
+    } else {
+      if (normName(rows[0][0]) !== "NIM") throw new Error("Kolom pertama header harus 'NIM'.");
+      var cols = Math.min(rows[0].length, CONFIG.JUMLAH_MAX + 1);
+      if (cols < 2) throw new Error("Minimal ada 1 kolom pertemuan setelah NIM.");
+      rows = rows.map(function (r, idx) {
+        var o = []; for (var c = 0; c < cols; c++) o.push(r[c] || "");
+        if (idx > 0 && !/^[A-Za-z0-9._-]+$/.test(o[0])) errors.push("Baris " + (idx + 1) + ": NIM tidak valid ('" + o[0] + "')");
+        return o;
+      });
+    }
+    if (errors.length) {
+      throw new Error(errors.slice(0, 5).join("\n") + (errors.length > 5 ? "\n(dan " + (errors.length - 5) + " kesalahan lain)" : ""));
+    }
+    updateProgress(50);
+    sendImport(jenis === "peserta" ? "import" : "import_presensi", rows);
+  } catch (e) {
+    showLoading(false); showAlert("importError", e.message);
+  }
+}
+function sendImport(action, rows) {
+  updateProgress(60);
+  var timer = setInterval(function () {
+    var cur = parseInt($("progressBar").style.width, 10) || 0;
+    if (cur < 90) updateProgress(cur + 2);
+  }, 250);
+  fetch(CONFIG.GAS_URL, { method: "POST", body: JSON.stringify({ token: getToken(), action: action, rows: rows }) })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      clearInterval(timer);
+      if (res.success) {
+        updateProgress(100);
+        setTimeout(function () {
+          showLoading(false); closeImport();
+          toast(res.message, "ok");
+          loadData();
+        }, 300);
+      } else {
+        showLoading(false);
+        if (res.code === "AUTH") { closeImport(); ssDel(TOKEN_KEY); showGate("Kode akses salah atau kedaluwarsa."); return; }
+        showAlert("importError", res.message || "Import gagal");
       }
-    });
-  } 
-
-  // Convert array ke format string CSV
-  let csvContent = "data:text/csv;charset=utf-8,";
-  csvRows.forEach(rowArray => {
-    let row = rowArray.map(cell => {
-      const escaped = String(cell).replace(/"/g, '""');
-      return `"${escaped}"`;
-    }).join(",");
-    csvContent += row + "\r\n";
-  });
-
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `moodle_enroll_${course1}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  closeMoodleModal();
+    })
+    .catch(function (err) { clearInterval(timer); showLoading(false); showAlert("importError", "Error: " + err.message); });
 }
 
-// Muat data saat page load
-loadJumlahKolom();
-window.addEventListener('load', loadData);
-</script>
+/* ================= EXPORT MOODLE ================= */
+function openMoodle() {
+  if (!kelompokList.length) { toast("Data belum dimuat atau kosong.", "err"); return; }
+  hideAlert("moodleErr");
+  $("moodleCourse").value = "";
+  $("moodlePwBox").style.display = $("moodleAccount").checked ? "" : "none";
+  openModal("moodleModal");
+}
+function splitName(full, fallback) {
+  var p = String(full || "").trim().split(/\s+/);
+  return { first: p[0] || fallback, last: p.slice(1).join(" ") || "-" };
+}
+function generateMoodle() {
+  hideAlert("moodleErr");
+  var course = $("moodleCourse").value.trim();
+  var withAcc = $("moodleAccount").checked;
+  if (!course) return showAlert("moodleErr", "Shortname course tidak boleh kosong.");
+  var pwS = $("pwStudent").value, pwT = $("pwTeacher").value, force = $("pwForce").checked ? "1" : "0";
+  if (withAcc) {
+    if (pwS.replace("{NIM}", "12345678").length < 8 || pwT.replace("{KODE}", "12345678").length < 8)
+      return showAlert("moodleErr", "Pola password menghasilkan password kurang dari 8 karakter.");
+  }
+  var rows = [withAcc
+    ? ["username", "firstname", "lastname", "email", "password", "forcepasswordchange", "course1", "group1", "role1"]
+    : ["username", "course1", "group1", "role1"]];
+  kelompokList.forEach(function (k) {
+    var info = dataKelompok[k];
+    if (info.kode_instruktur) {
+      if (withAcc) {
+        var t = splitName(info.instruktur, info.kode_instruktur);
+        rows.push([info.kode_instruktur, t.first, t.last, info.kode_instruktur + "@umm.ac.id",
+          pwT.split("{KODE}").join(info.kode_instruktur), force, course, k, "teacher"]);
+      } else rows.push([info.kode_instruktur, course, k, "teacher"]);
+    }
+    info.data.forEach(function (m) {
+      if (!m.nim) return;
+      if (withAcc) {
+        var s = splitName(m.nama, m.nim);
+        rows.push([m.nim, s.first, s.last, m.nim + "@webmail.umm.ac.id", pwS.split("{NIM}").join(m.nim), force, course, k, "student"]);
+      } else rows.push([m.nim, course, k, "student"]);
+    });
+  });
+  downloadFile("moodle_enroll_" + course.replace(/[^\w.-]+/g, "_") + ".csv", rows.map(csvLine).join("\r\n") + "\r\n");
+  closeModal("moodleModal");
+  toast("CSV Moodle diunduh (" + (rows.length - 1) + " baris).", "ok");
+}
 
+/* ================= EVENT ================= */
+function bind() {
+  $("gateBtn").onclick = submitGate;
+  $("gateInput").addEventListener("keydown", function (e) { if (e.key === "Enter") submitGate(); });
+  $("btnReload").onclick = loadData;
+  $("btnLogout").onclick = logout;
+  $("btnPrev").onclick = function () { moveKelompok(-1); };
+  $("btnNext").onclick = function () { moveKelompok(1); };
+  $("kelompok").onchange = render;
+  $("btnRender").onclick = render;
+  $("tabBtn-presensi").onclick = function () { switchTab("presensi"); };
+  $("tabBtn-laporan").onclick = function () { switchTab("laporan"); };
+  $("btnPrint").onclick = printCurrent; $("btnPrintL").onclick = printCurrent;
+  $("btnPrintAll").onclick = printAll; $("btnPrintAllL").onclick = printAll;
+  $("btnAddCol").onclick = function () { ubahKolom(1); };
+  $("btnDelCol").onclick = function () { ubahKolom(-1); };
+  $("btnTanggal1").onclick = openTanggal; $("btnTanggal2").onclick = openTanggal;
+  $("btnTglGo").onclick = generateTanggal; $("btnTglReset").onclick = resetTanggal;
+  $("btnTglCancel").onclick = function () { closeModal("tanggalModal"); };
+  $("btnImport").onclick = function () { openImport("peserta"); };
+  $("btnImport2").onclick = function () { openImport("presensi"); };
+  $("importJenis").onchange = updateTemplateHint;
+  $("btnTemplate").onclick = downloadTemplate;
+  $("btnImportCancel").onclick = closeImport; $("btnImportGo").onclick = importAction;
+  Array.prototype.forEach.call(document.getElementsByName("importSrc"), function (r) {
+    r.onchange = function () {
+      var v = document.querySelector('input[name="importSrc"]:checked').value;
+      $("srcFile").style.display = v === "file" ? "" : "none";
+      $("srcPaste").style.display = v === "paste" ? "" : "none";
+    };
+  });
+  $("btnMoodle").onclick = openMoodle;
+  $("moodleAccount").onchange = function () { $("moodlePwBox").style.display = this.checked ? "" : "none"; };
+  $("btnMoodleCancel").onclick = function () { closeModal("moodleModal"); };
+  $("btnMoodleGo").onclick = generateMoodle;
+}
+
+loadJumlahKolom();
+loadTanggal();
+bind();
+window.addEventListener("load", loadData);
+</script>
 </body>
 </html>
